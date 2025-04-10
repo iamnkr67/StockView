@@ -10,12 +10,15 @@ import Services from "./components/sections/Services.jsx";
 import Hero1 from "./components/Hero/Hero1.jsx";
 import About from "./components/sections/AboutUs.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
+import StockDetails from "./pages/stockDetails.jsx";
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(
     !!localStorage.getItem("token"), // Initial check
   );
   const [user, setUser] = useState(null);
+
+
 
   useEffect(() => {
     const checkAuth = () => {
@@ -53,6 +56,12 @@ function App() {
               }
             />
           )}
+          <Route
+            path="/stock/:id"
+            element={
+                <StockDetails />
+            }
+          />
         </Routes>
       </main>
 
