@@ -5,6 +5,10 @@ const db = require("./config/db");
 const userRoutes = require("./routes/userRoutes");
 const stockRoutes = require("./routes/stockRoutes");
 
+const {schedulePriceCheck} = require("./controllers/priceChecker");
+// Start the stock price checker
+schedulePriceCheck();
+
 const app = express();
 app.use(express.json());
 app.use(cors());

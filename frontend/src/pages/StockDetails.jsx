@@ -1,13 +1,16 @@
 import { useEffect, useState } from "react";
-import { useLocation, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { useStock } from "../context/StockContext.jsx";
 import { IoMdRefresh } from "react-icons/io";
+import axios from "axios";
 
 const StockDetails = () => {
   const { selectedStock } = useStock();
   const { id } = useParams();
   const [stock,setStock] = useState(selectedStock || null);
   const [price, setPrice] = useState(null);
+  const [targetPrice, setTargetPrice] = useState(null);
+  const [stopLoss, setStopLoss] = useState(null);
   
 
   useEffect(() => {
@@ -21,7 +24,6 @@ const StockDetails = () => {
         }
       })
     }
-
     fetch(`http://localhost:3001/stock/${id}`)
       .then((res) => {
         if (!res.ok) {
@@ -38,11 +40,38 @@ const StockDetails = () => {
   
    if (!stock) {
      return <p>Loading stock details...</p>;
-   }
+  }
+
+  const savePrice = () => {
+    const user = JSON.parse(localStorage.getItem("user"));
+    if (!user) {
+      console.error("User not found in local storage");
+      return;
+    }
+    const { email, name } = user;
+    const alertData = {
+      stockId: id,
+      stockName: stock["Issuer Name"],
+      targetPrice: targetPrice,
+      stopLoss: stopLoss
+    }
+    axios.post("http://localhost:3001/stock/alert", {
+      name: name,
+      email:email,
+      stock: alertData,
+    }).then((response) => {
+      alert(response.data.message);
+    }).catch((error) => {
+       alert("Failed to set alert:", error.response?.data?.message || "An error occurred." );
+     })
+  }
 
   return (
     <>
-      <h2 className="text-xl font-bold text-secondary text-center mt-4"> {stock["Issuer Name"]} </h2>
+      <h2 className="text-xl font-bold text-secondary text-center mt-4">
+        {" "}
+        {stock["Issuer Name"]}{" "}
+      </h2>
       <div className="p-6 flex flex-col lg:flex-row gap-8">
         {/* Graph Section */}
         <div className="flex-1 bg-gray-100 rounded-lg shadow-md mt-4 p-4">
@@ -68,7 +97,10 @@ const StockDetails = () => {
             <input
               type="number"
               placeholder="Enter target price"
+              value={targetPrice}
+              onChange={(e) => setTargetPrice(e.target.value)}
               className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary"
+              required
             />
           </div>
 
@@ -117,12 +149,18 @@ const StockDetails = () => {
             <input
               type="number"
               placeholder="Enter stop loss"
+              value={stopLoss}
+              onChange={(e) => setStopLoss(e.target.value)}
               className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary"
+              required
             />
           </div>
 
           {/* Set Alert Button */}
-          <button className="w-full bg-secondary text-white py-2 px-4 rounded-lg hover:bg-secondary-dark transition">
+          <button
+            onClick={savePrice}
+            className="w-full bg-secondary text-white py-2 px-4 rounded-lg hover:bg-secondary-dark transition"
+          >
             Set Alert
           </button>
         </div>
