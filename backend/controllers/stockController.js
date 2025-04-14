@@ -11,6 +11,7 @@ const getStockPrice = async (req, res) => {
   try {
     const details = await nseIndia.getEquityDetails(stockID);
 
+
     if (
       details &&
       details.priceInfo &&
@@ -55,4 +56,41 @@ const setStockLimit = async(req,res) => {
   }
 }
 
-module.exports = { getStockPrice, setStockLimit };
+const getHistory = async (req, res) => {
+ 
+   const symbol = req.params.symbol;
+
+   try {
+     const rawResult = await nseIndia.getEquityHistoricalData(symbol);
+
+     const allData = [];
+
+     // Loop over each historical segment and extract data
+     rawResult.forEach((segment) => {
+       if (segment.data && Array.isArray(segment.data)) {
+         segment.data.forEach((d) => {
+           allData.push({
+             time: Math.floor(new Date(d.CH_TIMESTAMP).getTime() / 1000),
+              open: d.CH_OPENING_PRICE,
+              high: d.CH_TRADE_HIGH_PRICE,
+              low: d.CH_TRADE_LOW_PRICE,
+              close: d.CH_CLOSING_PRICE,
+           });
+         });
+       }
+     });
+     // Sort the data by time in ascending order
+      allData.sort((a, b) => a.time - b.time);
+     // Send the data as a JSON response
+     res.setHeader("Access-Control-Allow-Origin", "*");
+     
+
+     res.json(allData);
+
+   } catch (error) {
+     console.error("Error fetching historical data:", error.message);
+     res.status(500).json({ error: "Failed to fetch historical data" });
+   } 
+}
+
+module.exports = { getStockPrice, setStockLimit, getHistory };

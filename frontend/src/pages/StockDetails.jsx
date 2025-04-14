@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { useStock } from "../context/StockContext.jsx";
 import { IoMdRefresh } from "react-icons/io";
 import axios from "axios";
+import StockGraph from "../components/StockGraph.jsx";
 
 const StockDetails = () => {
   const { selectedStock } = useStock();
@@ -32,7 +33,6 @@ const StockDetails = () => {
         return res.json();
       })
       .then((data) => {
-        console.log(data);
         setPrice(data.priceInfo.lastPrice);
       })
       .catch((err) => console.error("Failed to fetch stock details: ", err));
@@ -75,11 +75,33 @@ const StockDetails = () => {
       <div className="p-6 flex flex-col lg:flex-row gap-8">
         {/* Graph Section */}
         <div className="flex-1 bg-gray-100 rounded-lg shadow-md mt-4 p-4">
-          <h2 className="text-lg font-bold ">{stock["Security Id"]}</h2>
+          <h2 className="text-lg font-bold">{stock["Security Id"]}</h2>
           <p className="text-sm mb-4">{stock["Industry New Name"]}</p>
-          <p className="text-gray-500">
-            Graph will be displayed here in the future.
-          </p>
+
+          {stock["Security Id"] && (
+            <div className="my-4">
+              <StockGraph symbol={stock["Security Id"]} />
+            </div>
+          )}
+
+          <div
+            style={{
+              fontSize: "12px",
+              color: "#999",
+              textAlign: "center",
+              marginTop: "8px",
+            }}
+          >
+            ©{" "}
+            <a
+              href="https://www.tradingview.com/lightweight-charts/"
+              target="_blank"
+              rel="noreferrer"
+              style={{ color: "#999", textDecoration: "none" }}
+            >
+              TradingView Lightweight Charts
+            </a>
+          </div>
         </div>
 
         {/* Create Alert Section */}
