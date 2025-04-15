@@ -17,7 +17,8 @@ const LNavbar = ({ user }) => {
   const { setSelectedStock } = useStock();
   const menuRef = useRef(null);
   const dropdownRef = useRef(null);
-  const searchRef = useRef(null); 
+  const searchRef = useRef(null);
+
   useEffect(() => {
     const handleOutsideClick = (event) => {
       if (
@@ -28,7 +29,8 @@ const LNavbar = ({ user }) => {
         searchRef.current &&
         !searchRef.current.contains(event.target)
       ) {
-        setShowDropdown(false); 
+        setShowDropdown(false);
+        setFilteredStocks([]);
       }
     };
 
@@ -64,7 +66,7 @@ const LNavbar = ({ user }) => {
       );
 
       setFilteredStocks(filtered.slice(0, 11));
-    }, 500);
+    }, 300); // Reduced timeout to make the debounce smoother
     return () => clearTimeout(searchStock);
   }, [searchQuery, stock]);
 
@@ -105,14 +107,12 @@ const LNavbar = ({ user }) => {
           animate={{ opacity: 1, y: 0 }}
           className="container py-4 px-5 flex justify-between items-center"
         >
-          {/* Logo */}
           <a href="/">
             <h1 className="font-bold text-2xl">
               Stock<span className="text-secondary font-extrabold">View</span>
             </h1>
           </a>
 
-      
           <div
             className="relative w-full flex flex-col items-center"
             ref={menuRef}
@@ -124,26 +124,26 @@ const LNavbar = ({ user }) => {
                 placeholder="Search Your Favourite Stocks/MF/ETFs"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={handleEnterKey} 
+                onKeyDown={handleEnterKey}
                 className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary"
               />
             </form>
 
             {filteredStocks.length > 0 && (
               <div
-                className="absolute mt-11 w-1/3 max-h-72 overflow-y-auto bg-white bg-opacity-90 backdrop-blur-md shadow-lg rounded-lg z-50"
-                style={{ border: "1px solid #ddd" }}
+                className="absolute mt-11 w-1/3 max-h-72 overflow-y-hidden bg-white bg-opacity-90 backdrop-blur-md shadow-lg rounded-lg z-50"
+                style={{ border: "1px solid #ddd", overflowX: "hidden" }}
                 ref={dropdownRef}
               >
                 {filteredStocks.map((stock, index) => (
                   <div
                     key={index}
-                    className="stock-item p-2 border-b border-secondary last:border-b-0 hover:bg-secondary cursor-pointer"
+                    className="stock-item p-2 border-b border-secondary last:border-b-0 hover:bg-secondary hover:text-dark cursor-pointer"
                     onClick={() => handleStockClick(stock)}
                   >
                     <h3>
                       {stock["Issuer Name"]}{" "}
-                      <span className="text-secondary">
+                      <span className="text-secondary hover:text-white">
                         ({stock["Security Id"]}){" "}
                       </span>
                     </h3>
@@ -153,9 +153,7 @@ const LNavbar = ({ user }) => {
             )}
           </div>
 
-          {/* Profile & Menu */}
           <div className="flex items-center gap-4">
-            {/* Profile Dropdown */}
             <div className="relative">
               <button onClick={() => setShowDropdown(!showDropdown)}>
                 {profileImage ? (
@@ -190,7 +188,6 @@ const LNavbar = ({ user }) => {
               )}
             </div>
 
-            {/* Mobile Menu Button */}
             <div className="lg:hidden">
               <button onClick={() => setIsOpen(!isOpen)}>
                 {isOpen ? (
@@ -203,7 +200,6 @@ const LNavbar = ({ user }) => {
           </div>
         </motion.div>
 
-        {/* Mobile Menu */}
         {isOpen && (
           <motion.div
             initial={{ x: "100%" }}
@@ -219,7 +215,7 @@ const LNavbar = ({ user }) => {
                 placeholder="Search..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={handleEnterKey} // Handle Enter key press
+                onKeyDown={handleEnterKey}
                 className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary"
               />
             </form>
