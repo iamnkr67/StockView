@@ -9,7 +9,6 @@ import Hero from "./components/Hero/Hero.jsx";
 import Services from "./components/sections/Services.jsx";
 import Hero1 from "./components/Hero/Hero1.jsx";
 import About from "./components/sections/AboutUs.jsx";
-import Dashboard from "./pages/Dashboard.jsx";
 import StockDetails from "./pages/StockDetails.jsx";
 import Error from "./pages/404NotFound.jsx";
 import DashboardL from "./components/LoggedInComponents/Dashboard.jsx";

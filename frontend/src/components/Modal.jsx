@@ -12,7 +12,6 @@ const Modal = ({ isOpen, onClose, children }) => {
         exit={{ opacity: 0, scale: 0.8 }}
         className="bg-white rounded-lg shadow-lg w-full max-w-md p-6 relative"
       >
-        {/* Close Button */}
         <button
           className="absolute top-3 right-3 text-gray-600 hover:text-gray-900"
           onClick={onClose}

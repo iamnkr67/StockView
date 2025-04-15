@@ -5,14 +5,14 @@ import { useNavigate } from "react-router-dom";
 const Dashboard = () => {
   const [stocks, setStocks] = useState([]);
   const [prices, setPrices] = useState({});
-  const [previousPrices, setPreviousPrices] = useState({});
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetch("/stock.json")
-      .then((res) => res.json())
-      .then((data) => {
-        // Filter the stocks to include only PAYTM, ADANIENT, SWIGGY, NDTV, IDEA, AHLUCONT
+    const fetchData = async () => {
+      try {
+        const res = await fetch("/stock.json");
+        const data = await res.json();
+
         const filtered = data.filter((stock) =>
           ["PAYTM", "EIEL", "SWIGGY", "PNGJL", "KROSS", "IGIL"].includes(
             stock["Security Id"],
@@ -21,9 +21,10 @@ const Dashboard = () => {
 
         setStocks(filtered);
 
-        // Fetch prices for each filtered stock
         const pricePromises = filtered.map((stock) =>
-          fetch(`https://stockviewback.onrender.com/stock/${stock["Security Id"]}`)
+          fetch(
+            `https://stockviewback.onrender.com/stock/${stock["Security Id"]}`,
+          )
             .then((res) => res.json())
             .then((priceData) => ({
               id: stock["Security Id"],
@@ -39,27 +40,27 @@ const Dashboard = () => {
             }),
         );
 
-        Promise.all(pricePromises).then((results) => {
-          const newPrices = {};
-          results.forEach((item) => {
-            if (item) {
-              newPrices[item.id] = item.price;
-            }
-          });
-
-          setPrices(newPrices);
-
-          // Save previous prices for calculating the difference
-          setPreviousPrices(newPrices);
+        const results = await Promise.all(pricePromises);
+        const newPrices = {};
+        results.forEach((item) => {
+          if (item) {
+            newPrices[item.id] = item.price;
+          }
         });
-      });
+
+        setPrices(newPrices);
+      } catch (error) {
+        console.error("Error loading stocks:", error);
+      }
+    };
+
+    fetchData();
   }, []);
 
   const handleClick = (stockId) => {
     navigate(`/stock/${stockId}`);
   };
 
-  // Function to calculate price change
   const getPriceChangeClass = (currentPrice, previousPrice) => {
     if (currentPrice > previousPrice) {
       return {
@@ -76,31 +77,46 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="p-8 bg-gray-100">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="p-4 sm:p-6 bg-gray-100 min-h-screen">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {stocks.map((stock) => {
           const currentPrice = prices[stock["Security Id"]];
-          const previousPrice = previousPrices[stock["Security Id"]];
           const { className, change } = getPriceChangeClass(
             currentPrice,
-            previousPrice,
+            currentPrice, // Compare to itself since no previous price logic here
           );
 
           return (
             <div
               key={stock["Security Id"]}
               onClick={() => handleClick(stock["Security Id"])}
-              className="cursor-pointer bg-white p-6 rounded-lg shadow-lg hover:shadow-2xl transform transition duration-300 hover:scale-105"
+              className="cursor-pointer bg-white p-4 rounded-lg shadow hover:shadow-lg transition-transform transform hover:scale-105"
             >
-              <h2 className="text-xl font-semibold text-secondary mb-2">
+              <h2 className="text-lg font-semibold text-secondary mb-1">
                 {stock["Issuer Name"]}
               </h2>
-              <p className="text-sm text-gray-600">
+              <p className="text-xs text-gray-600">
                 {stock["Industry New Name"]}
               </p>
-              <p className="mt-4 text-lg font-bold">
-                ₹ {currentPrice !== undefined ? currentPrice : "Loading..."}
-                <span className={`ml-2 ${className}`}>{change}</span>
+              <p className="mt-3 text-lg font-bold">
+                {currentPrice !== undefined ? (
+                  <span className="text-gray-800">₹ {currentPrice}</span>
+                ) : (
+                  <span className="flex items-center gap-1 text-gray-400 h-5">
+                    {[...Array(3)].map((_, i) => (
+                      <span
+                        key={i}
+                        className="text-xl animate-bounce"
+                        style={{ animationDelay: `${i * 0.2}s` }}
+                      >
+                        .
+                      </span>
+                    ))}
+                  </span>
+                )}
+                {currentPrice !== undefined && (
+                  <span className={`ml-2 text-sm ${className}`}>{change}</span>
+                )}
               </p>
             </div>
           );

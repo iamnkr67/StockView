@@ -8,15 +8,15 @@ const StockGraph = ({ symbol }) => {
   const seriesRef = useRef(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    if (!chartContainerRef.current) return;
+  const initializeChart = () => {
+    if (!chartContainerRef.current) return null;
 
     const chart = createChart(chartContainerRef.current, {
       width: chartContainerRef.current.clientWidth,
       height: 400,
       layout: {
         backgroundColor: "transparent",
-        textColor: "#000000",
+        textColor: "#000",
       },
       grid: {
         vertLines: { color: "#e0e0e0" },
@@ -48,10 +48,36 @@ const StockGraph = ({ symbol }) => {
       },
     });
 
-    chartRef.current = chart;
+    const series = chart.addCandlestickSeries({
+      upColor: "#69a79c",
+      borderUpColor: "#4fff00",
+      wickUpColor: "#69a79c",
+      downColor: "#ff0000",
+      borderDownColor: "#ff0000",
+      wickDownColor: "#FF0000",
+    });
 
-    try {
-      seriesRef.current = chart.addCandlestickSeries({
+    chartRef.current = chart;
+    seriesRef.current = series;
+  };
+
+  useEffect(() => {
+    // Initial chart setup
+    initializeChart();
+
+    return () => {
+      chartRef.current?.remove();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!symbol) return;
+    setIsLoading(true);
+
+    // Remove old series and add a new one for fresh data
+    if (chartRef.current) {
+      chartRef.current.removeSeries(seriesRef.current);
+      seriesRef.current = chartRef.current.addCandlestickSeries({
         upColor: "#69a79c",
         borderUpColor: "#4fff00",
         wickUpColor: "#69a79c",
@@ -59,31 +85,24 @@ const StockGraph = ({ symbol }) => {
         borderDownColor: "#ff0000",
         wickDownColor: "#FF0000",
       });
-    } catch (err) {
-      console.error("addCandlestickSeries failed:", err);
     }
-
-    return () => {
-      chart.remove();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!symbol || !seriesRef.current) return;
-
-    setIsLoading(true);
 
     fetch(`https://stockviewback.onrender.com/stock/graph/${symbol}`)
       .then((res) => res.json())
       .then((data) => {
-        seriesRef.current.setData(data);
-        chartRef.current.timeScale().fitContent();
-        chartRef.current.timeScale().scrollToPosition(0, false);
-        setIsLoading(false);
+        if (data && data.length > 0 && seriesRef.current) {
+          seriesRef.current.setData(data);
+          chartRef.current.timeScale().fitContent();
+          chartRef.current.timeScale().scrollToPosition(0, false);
+        }
       })
       .catch((err) => {
-        console.error("Error fetching data:", err);
-        setIsLoading(false);
+        console.error("Error fetching graph data:", err);
+      })
+      .finally(() => {
+        setTimeout(() => {
+          setIsLoading(false);
+        }, 500);
       });
   }, [symbol]);
 
@@ -92,7 +111,7 @@ const StockGraph = ({ symbol }) => {
       <div ref={chartContainerRef} className="w-full h-full" />
 
       {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-transparent bg-opacity-50 z-20">
+        <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-70 z-20">
           <MutatingDots
             height="100"
             width="100"
@@ -106,7 +125,7 @@ const StockGraph = ({ symbol }) => {
       )}
 
       <div className="absolute bottom-7 left-0 mb-4 mr-4 z-10">
-        <span className="text-gray-300 text-sm opacity-80 bg-opacity-50 p-2 rounded  hover:text-black">
+        <span className="text-gray-300 text-sm opacity-80 bg-opacity-50 p-2 rounded hover:text-black">
           ©{" "}
           <a
             href="https://www.tradingview.com/lightweight-charts/"

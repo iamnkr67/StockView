@@ -2,8 +2,12 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useStock } from "../context/StockContext.jsx";
 import { IoMdRefresh, IoMdHeartEmpty, IoMdHeart } from "react-icons/io";
+import { LuZoomIn } from "react-icons/lu";
+import { MdChevronRight, MdChevronLeft } from "react-icons/md";
 import axios from "axios";
 import StockGraph from "../components/StockGraph.jsx";
+import { Alert } from "@mui/material";
+import CheckIcon from "@mui/icons-material/Check";
 
 const API_BASE = "https://stockviewback.onrender.com";
 
@@ -14,42 +18,73 @@ const StockDetails = () => {
 
   const [stock, setStock] = useState(selectedStock || null);
   const [price, setPrice] = useState(null);
-  const [targetPrice, setTargetPrice] = useState(null);
-  const [stopLoss, setStopLoss] = useState(null);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [wishlist, setWishlist] = useState([]);
   const [isWishlisted, setIsWishlisted] = useState(false);
-  const [showDropdown, setShowDropdown] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isZoomModalOpen, setIsZoomModalOpen] = useState(false);
+  const [targetPrice, setTargetPrice] = useState("");
+  const [stopLoss, setStopLoss] = useState("");
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [alertMessage, setAlertMessage] = useState(null);
+  const [isWishlistOpen, setIsWishlistOpen] = useState(false);
+  const [alerts, setAlerts] = useState([]);
 
   const user = JSON.parse(localStorage.getItem("user"));
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  const showAlert = (message) => {
+    setAlertMessage(message);
+    setTimeout(() => setAlertMessage(null), 3000);
+  };
 
   const fetchWishlist = useCallback(async () => {
     if (!user) return;
     try {
       const res = await axios.get(`${API_BASE}/stock/wishlist/${user.email}`);
       setWishlist(res.data);
-      const exists = res.data.find((item) => item.stockId === id);
-      setIsWishlisted(!!exists);
+      setIsWishlisted(res.data.some((item) => item.stockId === id));
     } catch (err) {
       console.error("Failed to fetch wishlist:", err);
     }
   }, [user?.email, id]);
 
+  const fetchAlerts = useCallback(async () => {
+    if (!user || !id) return;
+    try {
+      const res = await axios.get(`${API_BASE}/stock/alert/${user.email}`);
+      setAlerts(res.data.filter((a) => a.stockId === id));
+    } catch (err) {
+      console.error("Failed to fetch alerts:", err);
+    }
+  }, [user?.email, id]);
+
   const fetchStockData = useCallback(async () => {
     let currentStock = stock;
-
     if (!currentStock || currentStock["Security Id"] !== id) {
       const res = await fetch("/stock.json");
       const data = await res.json();
       currentStock = data.find((s) => s["Security Id"] === id);
       if (currentStock) setStock(currentStock);
     }
-
     if (currentStock) {
       try {
-        const res = await fetch(`${API_BASE}/stock/${id}`);
-        const data = await res.json();
-        setPrice(data.priceInfo.lastPrice);
+        setPrice(null);
+        let data = null;
+        while (!data) {
+          const res = await fetch(`${API_BASE}/stock/${id}`);
+          data = await res.json();
+          if (!data.priceInfo?.lastPrice) {
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+          } else {
+            setPrice(data.priceInfo.lastPrice);
+          }
+        }
       } catch (err) {
         console.error("Failed to fetch stock price:", err);
       }
@@ -59,11 +94,11 @@ const StockDetails = () => {
   useEffect(() => {
     fetchStockData();
     fetchWishlist();
-  }, [fetchStockData, fetchWishlist]);
+    fetchAlerts();
+  }, [fetchStockData, fetchWishlist, fetchAlerts]);
 
   const toggleWishlist = async () => {
     if (!user || !stock) return;
-
     const data = {
       email: user.email,
       stock: {
@@ -71,179 +106,267 @@ const StockDetails = () => {
         stockName: stock["Issuer Name"],
       },
     };
-
     try {
       if (isWishlisted) {
         await axios.delete(`${API_BASE}/stock/wishlist/${user.email}/${id}`);
+        showAlert("Removed from wishlist");
       } else {
         await axios.post(`${API_BASE}/stock/wishlist`, data);
+        showAlert("Added to wishlist");
       }
-      await fetchWishlist(); // Automatically updates list + heart icon
+      fetchWishlist();
     } catch (err) {
       console.error("Wishlist error:", err);
     }
   };
 
-  const savePrice = () => {
+  const savePrice = async () => {
     if (!user || !stock) return;
-
     const alertData = {
       stockId: id,
       stockName: stock["Issuer Name"],
-      targetPrice,
-      stopLoss,
+      targetPrice: parseFloat(targetPrice),
+      stopLoss: parseFloat(stopLoss),
     };
-
-    axios
-      .post(`${API_BASE}/stock/alert`, {
+    try {
+      await axios.post(`${API_BASE}/stock/alert`, {
         name: user.name,
         email: user.email,
         stock: alertData,
-      })
-      .then((response) => alert(response.data.message))
-      .catch((error) => {
-        alert(error.response?.data?.message || "Failed to set alert.");
       });
+      showAlert("Price alert is created");
+      setIsModalOpen(false);
+      fetchAlerts();
+    } catch (error) {
+      alert(error.response?.data?.message || "Failed to set alert.");
+    }
   };
 
-  if (!stock) return <p>Loading stock details...</p>;
+  if (!stock)
+    return (
+      <p className="text-center text-gray-500 p-8">Loading stock details...</p>
+    );
 
   return (
     <>
-      <div className="flex justify-between items-center mt-4 px-6">
-        <h2 className="text-xl font-bold text-secondary text-center flex items-baseline gap-2">
+      {alertMessage && (
+        <div className="fixed inset-0 flex justify-center items-center z-50">
+          <Alert icon={<CheckIcon fontSize="inherit" />} severity="success">
+            {alertMessage}
+          </Alert>
+        </div>
+      )}
+
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mt-6 px-4 gap-4">
+        <h2 className="text-2xl font-bold text-secondary flex items-baseline gap-2">
           {stock["Issuer Name"]}
           <span className="text-sm text-gray-500">{stock["Instrument"]}</span>
         </h2>
-
-        <div className="relative">
-          <button
-            onClick={() => setShowDropdown((prev) => !prev)}
-            className="bg-secondary text-white px-4 py-2 rounded-lg hover:bg-secondary-dark transition"
-          >
-            My Wishlist
-          </button>
-
-          {showDropdown && (
-            <div className="absolute right-0 mt-2 w-64 bg-white border rounded-lg shadow-lg z-50 max-h-64 overflow-y-auto">
-              {wishlist.length === 0 ? (
-                <p className="p-4 text-sm text-gray-500 text-center">
-                  Wishlist is empty
-                </p>
-              ) : (
-                <ul>
-                  {wishlist.map((item) => (
-                    <li
-                      key={item.stockId}
-                      className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm"
-                      onClick={() => {
-                        setShowDropdown(false);
-                        navigate(`/stock/${item.stockId}`);
-                      }}
-                    >
-                      {item.stockName}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          )}
-        </div>
+        <button
+          onClick={() => setIsWishlistOpen((prev) => !prev)}
+          className="text-3xl text-gray-600 lg:block hidden"
+          title="Toggle Wishlist"
+        >
+          {isWishlistOpen ? <MdChevronLeft /> : <MdChevronRight />}
+        </button>
       </div>
 
-      <div className="p-6 flex flex-col lg:flex-row gap-8">
-        <div className="flex-1 bg-transparent rounded-lg shadow-md mt-4 p-4">
-          <div className="flex items-center justify-between">
+      <div className="p-4 md:p-6 flex flex-col lg:flex-row gap-6">
+        <div className="flex-1 bg-white rounded-lg shadow-md p-4 relative min-h-[500px]">
+          <div className="flex justify-between items-center mb-4">
             <div>
               <h2 className="text-lg font-bold">{stock["Security Id"]}</h2>
-              <p className="text-sm mb-2">{stock["Industry New Name"]}</p>
+              <p className="text-sm text-gray-500">
+                {stock["Industry New Name"]}
+              </p>
             </div>
-            <button
-              onClick={toggleWishlist}
-              className="text-2xl text-green-800"
-            >
-              {isWishlisted ? <IoMdHeart /> : <IoMdHeartEmpty />}
-            </button>
-          </div>
 
-          <div className="my-4">
-            <StockGraph symbol={stock["Security Id"]} />
-          </div>
-        </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={toggleWishlist}
+                className="text-2xl text-green-700"
+              >
+                {isWishlisted ? <IoMdHeart /> : <IoMdHeartEmpty />}
+              </button>
 
-        <div className="w-full lg:w-1/3 bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-lg font-bold text-secondary">Create Alert</h2>
-          <p className="text-sm text-gray-500 mb-6">
-            Email notification will be sent when your target is crossed.
-          </p>
+              {price !== null ? (
+                <span className="text-md font-semibold text-gray-700">
+                  ₹ {price}
+                </span>
+              ) : (
+                <span className="flex items-center gap-1 text-gray-500">
+                  {[...Array(3)].map((_, i) => (
+                    <span
+                      key={i}
+                      className="text-xl animate-bounce"
+                      style={{ animationDelay: `${i * 0.2}s` }}
+                    >
+                      .
+                    </span>
+                  ))}
+                </span>
+              )}
 
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Target Price
-            </label>
-            <input
-              type="number"
-              placeholder="Enter target price"
-              value={targetPrice}
-              onChange={(e) => setTargetPrice(e.target.value)}
-              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary"
-            />
-          </div>
-
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Current Price
-            </label>
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                value={price !== null ? `₹ ${price}` : "Loading..."}
-                readOnly
-                className="w-full px-4 py-2 border rounded-lg bg-gray-100 text-gray-700"
-              />
               <button
                 onClick={() => {
                   setIsRefreshing(true);
+                  setPrice(null);
                   fetch(`${API_BASE}/stock/${id}`)
                     .then((res) => res.json())
                     .then((data) => setPrice(data.priceInfo.lastPrice))
                     .catch((err) =>
-                      console.error("Failed to refresh price: ", err),
+                      console.error("Failed to refresh price:", err),
                     )
                     .finally(() =>
                       setTimeout(() => setIsRefreshing(false), 1000),
                     );
                 }}
-                className="px-4 py-2 bg-secondary text-white rounded-lg hover:bg-secondary-dark transition"
+                className="text-gray-600"
               >
                 <IoMdRefresh
-                  className={`${isRefreshing ? "animate-spin" : ""} text-xl`}
+                  className={`${isRefreshing ? "animate-spin" : ""}`}
                 />
+              </button>
+
+              <button
+                onClick={() => setIsModalOpen(true)}
+                className="bg-secondary text-white py-1 px-3 rounded-md text-sm"
+              >
+                Create Alert
               </button>
             </div>
           </div>
 
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Stop Loss
-            </label>
-            <input
-              type="number"
-              placeholder="Enter stop loss"
-              value={stopLoss}
-              onChange={(e) => setStopLoss(e.target.value)}
-              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary"
-            />
+          <div className="w-full h-[300px] md:h-[400px]">
+            <StockGraph symbol={stock["Security Id"]} />
           </div>
 
-          <button
-            onClick={savePrice}
-            className="w-full bg-secondary text-white py-2 px-4 rounded-lg hover:bg-secondary-dark transition"
-          >
-            Set Alert
-          </button>
+          <div className="flex justify-end">
+            <button
+              onClick={() => setIsZoomModalOpen(true)}
+              className="text-xl bg-gray-100 hover:bg-gray-200 p-2 rounded-lg"
+              title="Zoom Chart"
+            >
+              <LuZoomIn />
+            </button>
+          </div>
+
+          {alerts.length > 0 && (
+            <div className="mt-6">
+              <h3 className="text-md font-semibold text-secondary mb-2">
+                Price Alerts
+              </h3>
+              <ul className="space-y-2">
+                {alerts.map((alert, index) => (
+                  <li key={index} className="text-sm text-gray-700">
+                    Target: ₹{alert.targetPrice} | Stop Loss: ₹{alert.stopLoss}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
+
+        {(isMobile || isWishlistOpen) && (
+          <div
+            className={`bg-white shadow-md rounded-lg p-4 w-full lg:w-1/3 transition-all duration-300 ${
+              isMobile ? "fixed inset-0 z-50" : ""
+            }`}
+          >
+            {isMobile && (
+              <button
+                onClick={() => setIsWishlistOpen(false)}
+                className="text-xl text-gray-600 absolute top-4 right-4"
+              >
+                &times;
+              </button>
+            )}
+            <h2 className="text-xl font-bold text-secondary mb-4">
+              Your Wishlist
+            </h2>
+            {wishlist.length === 0 ? (
+              <p className="text-sm text-gray-500 text-center">
+                Wishlist is empty
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {wishlist.map((item) => (
+                  <li
+                    key={item.stockId}
+                    onClick={() => navigate(`/stock/${item.stockId}`)}
+                    className="hover:bg-gray-100 p-2 rounded-md cursor-pointer transition"
+                  >
+                    {item.stockName}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
       </div>
+
+      {isZoomModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex justify-center items-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-4xl w-full relative">
+            <button
+              onClick={() => setIsZoomModalOpen(false)}
+              className="absolute top-2 right-2 text-xl text-gray-600"
+            >
+              &times;
+            </button>
+            <h2 className="text-xl font-bold mb-4 text-secondary">
+              {stock["Issuer Name"]}
+            </h2>
+            <StockGraph symbol={stock["Security Id"]} />
+          </div>
+        </div>
+      )}
+
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-gray-800 bg-opacity-50 flex justify-center items-center z-50">
+          <div className="bg-white p-6 rounded-lg max-w-md w-full relative">
+            <button
+              onClick={() => setIsModalOpen(false)}
+              className="absolute top-2 right-2 text-xl text-gray-600"
+            >
+              &times;
+            </button>
+            <h2 className="text-xl font-bold text-secondary mb-4">
+              Create Alert
+            </h2>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Target Price
+              </label>
+              <input
+                type="number"
+                placeholder="Enter target price"
+                value={targetPrice}
+                onChange={(e) => setTargetPrice(e.target.value)}
+                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary"
+              />
+            </div>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Stop Loss
+              </label>
+              <input
+                type="number"
+                placeholder="Enter stop loss"
+                value={stopLoss}
+                onChange={(e) => setStopLoss(e.target.value)}
+                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary"
+              />
+            </div>
+            <button
+              onClick={savePrice}
+              className="w-full bg-secondary text-white py-2 px-4 rounded-lg hover:bg-secondary-dark transition"
+            >
+              Set Alert
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 };
