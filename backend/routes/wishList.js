@@ -2,7 +2,6 @@ const express = require("express");
 const router = express.Router();
 const WishList = require("../models/wishList");
 
-// Add a stock to the wishlist
 router.post("/", async (req, res) => {
   const { email, stock } = req.body;
   if (!email || !stock || !stock.stockId || !stock.stockName) {
