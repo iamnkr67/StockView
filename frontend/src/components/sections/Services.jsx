@@ -39,7 +39,7 @@ const ServicesData = [
     ),
     link: "#",
     icon: (<DotLottieReact
-      src="https://lottie.host/3fd2ec77-52c5-41a0-8e4d-dc74f44bed68/KZ0M1qYoZa.lottie"
+      src="https://lottie.host/b232939e-b958-4a19-9f25-ce2e12d33923/YNndLv3k0B.lottie"
       loop
       autoplay
               className="w-32 h-32"
