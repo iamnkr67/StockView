@@ -81,6 +81,6 @@ const schedulePriceCheck = () => {
   setInterval(() => {
     console.log("Running stock price check...");
     checkStockPrices();
-  }, 3600000); // 10 minutes in milliseconds
+  }, 600000); // 10 minutes in milliseconds
 };
 module.exports = {schedulePriceCheck}
