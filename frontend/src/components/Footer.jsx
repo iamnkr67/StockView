@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 
 const Footer = () => {
   return (
-    <footer className="py-28 bg-[#f7f7f7]">
+    <footer className="py-28 bg-[#f7f7f7] ">
       <motion.div
         initial={{ opacity: 0, y: 50 }}
         whileInView={{ opacity: 1, y: 0 }}
@@ -65,7 +65,7 @@ const Footer = () => {
             </div>
           </div>
           {/* third section */}
-          <div className="space-y-4 max-w-[300px]">
+          <div className="space-y-4 max-w-[300px]" id="contact-us">
             <h1 className="text-2xl font-bold">Get In Touch</h1>
             <div className="flex items-center">
               <input

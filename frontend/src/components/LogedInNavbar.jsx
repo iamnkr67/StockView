@@ -1,27 +1,34 @@
 import React, { useState, useEffect, useRef } from "react";
-import { IoMdMenu, IoMdClose, IoMdLogOut, IoMdSettings } from "react-icons/io";
+import { IoMdMenu, IoMdClose, IoMdLogOut } from "react-icons/io";
 import { motion } from "framer-motion";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { useNavigate } from "react-router-dom";
+import { useStock } from "../context/StockContext";
 
 const LNavbar = ({ user }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
-  const [profileImage, setProfileImage] = useState(
-    localStorage.getItem("profileImage") || null,
-  );
-
+  const [stock, setStocks] = useState([]);
+  const [filteredStocks, setFilteredStocks] = useState([]);
+  const profileImage = null;
+  const navigate = useNavigate();
+  const { setSelectedStock } = useStock();
   const menuRef = useRef(null);
   const dropdownRef = useRef(null);
-
+  const searchRef = useRef(null); 
   useEffect(() => {
     const handleOutsideClick = (event) => {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
-        setIsOpen(false);
-      }
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setShowDropdown(false);
+      if (
+        menuRef.current &&
+        !menuRef.current.contains(event.target) &&
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target) &&
+        searchRef.current &&
+        !searchRef.current.contains(event.target)
+      ) {
+        setShowDropdown(false); 
       }
     };
 
@@ -29,28 +36,61 @@ const LNavbar = ({ user }) => {
     return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, []);
 
+  useEffect(() => {
+    fetch("/stock.json")
+      .then((res) => res.json())
+      .then((data) => setStocks(data))
+      .catch((err) => console.error("Failed to fetch stocks: ", err));
+  }, []);
+
+  useEffect(() => {
+    const searchStock = setTimeout(() => {
+      if (searchQuery.trim() === "") {
+        setFilteredStocks([]);
+        return;
+      }
+
+      const filtered = stock.filter(
+        (stock) =>
+          stock["Issuer Name"]
+            .toLowerCase()
+            .includes(searchQuery.toLowerCase()) ||
+          stock["Security Id"]
+            .toLowerCase()
+            .includes(searchQuery.toLowerCase()) ||
+          stock["Sector Name"]
+            .toLowerCase()
+            .includes(searchQuery.toLowerCase()),
+      );
+
+      setFilteredStocks(filtered.slice(0, 11));
+    }, 500);
+    return () => clearTimeout(searchStock);
+  }, [searchQuery, stock]);
+
+  const handleStockClick = (stock) => {
+    setSearchQuery("");
+    setFilteredStocks([]);
+    setSelectedStock(stock);
+    navigate(`/stock/${encodeURIComponent(stock["Security Id"])}`);
+  };
+
   const handleSearch = (e) => {
     e.preventDefault();
-    console.log("Searching for:", searchQuery);
   };
 
   const handleSignOut = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
-    localStorage.removeItem("profileImage");
     toast.success("Logged out successfully! 🚪");
     window.dispatchEvent(new Event("storage"));
+    navigate("/");
   };
 
-  const handleImageUpload = (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        localStorage.setItem("profileImage", reader.result);
-        setProfileImage(reader.result);
-      };
-      reader.readAsDataURL(file);
+  const handleEnterKey = (e) => {
+    if (e.key === "Enter" && filteredStocks.length > 0) {
+      e.preventDefault();
+      handleStockClick(filteredStocks[0]);
     }
   };
 
@@ -72,16 +112,46 @@ const LNavbar = ({ user }) => {
             </h1>
           </a>
 
-          {/* Search Box - Hidden on Mobile */}
-          <form onSubmit={handleSearch} className="hidden lg:flex w-1/3">
-            <input
-              type="text"
-              placeholder="Search..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary"
-            />
-          </form>
+      
+          <div
+            className="relative w-full flex flex-col items-center"
+            ref={menuRef}
+          >
+            <form className="hidden lg:flex w-1/3">
+              <input
+                ref={searchRef}
+                type="text"
+                placeholder="Search Your Favourite Stocks/MF/ETFs"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={handleEnterKey} 
+                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary"
+              />
+            </form>
+
+            {filteredStocks.length > 0 && (
+              <div
+                className="absolute mt-11 w-1/3 max-h-72 overflow-y-auto bg-white bg-opacity-90 backdrop-blur-md shadow-lg rounded-lg z-50"
+                style={{ border: "1px solid #ddd" }}
+                ref={dropdownRef}
+              >
+                {filteredStocks.map((stock, index) => (
+                  <div
+                    key={index}
+                    className="stock-item p-2 border-b border-secondary last:border-b-0 hover:bg-secondary cursor-pointer"
+                    onClick={() => handleStockClick(stock)}
+                  >
+                    <h3>
+                      {stock["Issuer Name"]}{" "}
+                      <span className="text-secondary">
+                        ({stock["Security Id"]}){" "}
+                      </span>
+                    </h3>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* Profile & Menu */}
           <div className="flex items-center gap-4">
@@ -109,20 +179,6 @@ const LNavbar = ({ user }) => {
                   ref={dropdownRef}
                   className="absolute right-0 mt-2 w-48 bg-white border rounded-lg shadow-lg"
                 >
-                  <label
-                    htmlFor="file-upload"
-                    className="flex items-center gap-2 px-4 py-2 hover:bg-gray-100 cursor-pointer"
-                  >
-                    <IoMdSettings />
-                    Edit Profile
-                  </label>
-                  <input
-                    id="file-upload"
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleImageUpload}
-                  />
                   <button
                     onClick={handleSignOut}
                     className="flex items-center gap-2 px-4 py-2 w-full text-red-600 hover:bg-gray-100"
@@ -163,6 +219,7 @@ const LNavbar = ({ user }) => {
                 placeholder="Search..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={handleEnterKey} // Handle Enter key press
                 className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary"
               />
             </form>
