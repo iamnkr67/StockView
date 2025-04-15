@@ -38,7 +38,12 @@ const ServicesData = [
       </h2>
     ),
     link: "#",
-    icon: <img src="/src/assets/alert.gif" alt="Alert" size={32} />,
+    icon: (<DotLottieReact
+      src="path/to/animation.lottie"
+      loop
+      autoplay
+              className="w-32 h-32"
+    />),
     delay: 0.3,
   },
   {
@@ -51,7 +56,12 @@ const ServicesData = [
       </h2>
     ),
     link: "#",
-    icon: <img src="/src/assets/marketupDown.gif" alt="Alert" size={32} />,
+    icon: ( <DotLottieReact
+      src="path/to/animation.lottie"
+      loop
+      autoplay
+               className="w-32 h-32"
+    />),
     delay: 0.4,
   },
   {
