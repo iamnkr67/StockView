@@ -1,5 +1,5 @@
 import React from "react";
-import { FaInstagram, FaWhatsapp, FaYoutube } from "react-icons/fa";
+import { FaWhatsapp, FaEnvelope } from "react-icons/fa";
 import { TbWorldWww } from "react-icons/tb";
 import { motion } from "framer-motion";
 
@@ -15,7 +15,7 @@ const Footer = () => {
           {/* first section */}
           <div className="space-y-4 max-w-[300px]">
             <h1 className="text-2xl font-bold">StockView</h1>
-            <p className="text-dark2">StockView is stock website.......</p>
+            <p className="text-dark2">StockView is stock website</p>
           </div>
           {/* second section */}
           <div className="grid grid-cols-2 gap-10">
@@ -34,15 +34,6 @@ const Footer = () => {
                   </li>
                   <li className="cursor-pointer hover:text-secondary duration-200">
                     IPO
-                  </li>
-                  <li className="cursor-pointer hover:text-secondary duration-200">
-                    Mutual Funds
-                  </li>
-                  <li className="cursor-pointer hover:text-secondary duration-200">
-                    NFO
-                  </li>
-                  <li className="cursor-pointer hover:text-secondary duration-200">
-                    ETF
                   </li>
                 </ul>
               </div>
@@ -64,7 +55,6 @@ const Footer = () => {
               </div>
             </div>
           </div>
-          {/* third section */}
           <div className="space-y-4 max-w-[300px]" id="contact-us">
             <h1 className="text-2xl font-bold">Get In Touch</h1>
             <div className="flex items-center">
@@ -82,11 +72,9 @@ const Footer = () => {
               <a href="https://chat.whatsapp.com/randommmm">
                 <FaWhatsapp className="cursor-pointer hover:text-primary hover:scale-105 duration-200" />
               </a>
-              <a href="https://www.instagram.com/nitesh_shah67/">
-                <FaInstagram className="cursor-pointer hover:text-primary hover:scale-105 duration-200" />
-              </a>
-              <a href="https://www.youtube.com/@StockView">
-                <FaYoutube className="cursor-pointer hover:text-primary hover:scale-105 duration-200" />
+
+              <a href="mailto:stockviewai@gmail.com">
+                <FaEnvelope className="cursor-pointer hover:text-primary hover:scale-105 duration-200" />
               </a>
             </div>
             <div>
@@ -95,7 +83,7 @@ const Footer = () => {
                 Made with <span className="text-red-500">❤</span> by{" "}
                 <a
                   className="text-blue-400"
-                  href="https://instagram.com/sri__1448"
+                  href="https://stockviewai.vercel.app/"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
