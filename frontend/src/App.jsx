@@ -10,7 +10,7 @@ import Services from "./components/sections/Services.jsx";
 import Hero1 from "./components/Hero/Hero1.jsx";
 import About from "./components/sections/AboutUs.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
-import StockDetails from "./pages/stockDetails.jsx";
+import StockDetails from "./pages/StockDetails.jsx";
 import NotFound from "./pages/404NotFound.jsx";
 import DashboardL from "./components/LoggedInComponents/Dashboard.jsx";
 function App() {
