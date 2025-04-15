@@ -11,23 +11,22 @@ import Hero1 from "./components/Hero/Hero1.jsx";
 import About from "./components/sections/AboutUs.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import StockDetails from "./pages/stockDetails.jsx";
-
+import NotFound from "./pages/404NotFound.jsx";
+import DashboardL from "./components/LoggedInComponents/Dashboard.jsx";
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(
     !!localStorage.getItem("token"), // Initial check
   );
   const [user, setUser] = useState(null);
 
-
-
   useEffect(() => {
     const checkAuth = () => {
       const storedUser = JSON.parse(localStorage.getItem("user"));
-      setIsAuthenticated(!!localStorage.getItem("token"));
+      const token = localStorage.getItem("token");
+      setIsAuthenticated(!!token);
       setUser(storedUser);
-      console.log("Auth status : ", user);
     };
-    checkAuth();
+
     window.addEventListener("storage", checkAuth);
 
     return () => {
@@ -42,7 +41,7 @@ function App() {
       <main className="overflow-x-hidden bg-white text-dark">
         <Routes>
           {isAuthenticated ? (
-            <Route path="/dashboard" element={<Services />} />
+            <Route path="/" element={<DashboardL />} />
           ) : (
             <Route
               path="/"
@@ -56,12 +55,8 @@ function App() {
               }
             />
           )}
-          <Route
-            path="/stock/:id"
-            element={
-                <StockDetails />
-            }
-          />
+          <Route path="/stock/:id" element={<StockDetails />} />
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
 

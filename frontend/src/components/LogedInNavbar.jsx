@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { IoMdMenu, IoMdClose, IoMdLogOut, IoMdSettings } from "react-icons/io";
+import { IoMdMenu, IoMdClose, IoMdLogOut } from "react-icons/io";
 import { motion } from "framer-motion";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -17,14 +17,18 @@ const LNavbar = ({ user }) => {
   const { setSelectedStock } = useStock();
   const menuRef = useRef(null);
   const dropdownRef = useRef(null);
-
+  const searchRef = useRef(null); 
   useEffect(() => {
     const handleOutsideClick = (event) => {
-      // Close the dropdown if the click is outside the search box or dropdown
-      if (menuRef.current && !menuRef.current.contains(event.target)
-        && dropdownRef.current && !dropdownRef.current.contains(event.target))
-      {
-        setShowDropdown(false); // Close the dropdown
+      if (
+        menuRef.current &&
+        !menuRef.current.contains(event.target) &&
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target) &&
+        searchRef.current &&
+        !searchRef.current.contains(event.target)
+      ) {
+        setShowDropdown(false); 
       }
     };
 
@@ -54,7 +58,9 @@ const LNavbar = ({ user }) => {
           stock["Security Id"]
             .toLowerCase()
             .includes(searchQuery.toLowerCase()) ||
-          stock["Sector Name"].toLowerCase().includes(searchQuery.toLowerCase())
+          stock["Sector Name"]
+            .toLowerCase()
+            .includes(searchQuery.toLowerCase()),
       );
 
       setFilteredStocks(filtered.slice(0, 11));
@@ -71,7 +77,6 @@ const LNavbar = ({ user }) => {
 
   const handleSearch = (e) => {
     e.preventDefault();
-    //console.log("Search submitted:", searchQuery);
   };
 
   const handleSignOut = () => {
@@ -80,6 +85,13 @@ const LNavbar = ({ user }) => {
     toast.success("Logged out successfully! 🚪");
     window.dispatchEvent(new Event("storage"));
     navigate("/");
+  };
+
+  const handleEnterKey = (e) => {
+    if (e.key === "Enter" && filteredStocks.length > 0) {
+      e.preventDefault();
+      handleStockClick(filteredStocks[0]);
+    }
   };
 
   const userName = user?.name || "User";
@@ -100,14 +112,19 @@ const LNavbar = ({ user }) => {
             </h1>
           </a>
 
-          {/* Search Box - Hidden on Mobile */}
-          <div className="stock-container w-full flex flex-col items-center" ref={menuRef}>
+      
+          <div
+            className="relative w-full flex flex-col items-center"
+            ref={menuRef}
+          >
             <form className="hidden lg:flex w-1/3">
               <input
+                ref={searchRef}
                 type="text"
                 placeholder="Search Your Favourite Stocks/MF/ETFs"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={handleEnterKey} 
                 className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary"
               />
             </form>
@@ -202,6 +219,7 @@ const LNavbar = ({ user }) => {
                 placeholder="Search..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={handleEnterKey} // Handle Enter key press
                 className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary"
               />
             </form>

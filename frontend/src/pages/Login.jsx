@@ -25,14 +25,17 @@ const Login = ({ showModal, setShowModal }) => {
       );
 
       toast.success("Login Successful! 🎉");
-      console.log(response.data); 
+      console.log(response.data);
       const { name, profileInitial, token } = response.data;
       localStorage.setItem("token", token);
-      localStorage.setItem("user", JSON.stringify({ name, profileInitial,email }));
+      localStorage.setItem(
+        "user",
+        JSON.stringify({ name, profileInitial, email }),
+      );
       setTimeout(() => {
         setShowModal(false);
         window.dispatchEvent(new Event("storage"));
-        navigate("/dashboard");
+        navigate("/");
       }, 1000);
     } catch (error) {
       toast.error(
