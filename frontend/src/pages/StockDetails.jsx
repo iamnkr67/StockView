@@ -1,7 +1,12 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useStock } from "../context/StockContext.jsx";
-import { IoMdRefresh, IoMdHeartEmpty, IoMdHeart } from "react-icons/io";
+import {
+  IoMdRefresh,
+  IoMdHeartEmpty,
+  IoMdHeart,
+  IoMdList,
+} from "react-icons/io";
 import { LuZoomIn } from "react-icons/lu";
 import { MdChevronRight, MdChevronLeft } from "react-icons/md";
 import axios from "axios";
@@ -157,6 +162,16 @@ const StockDetails = () => {
         </div>
       )}
 
+      {/* Floating Wishlist Icon (Mobile Only) */}
+      {isMobile && (
+        <button
+          className="fixed bottom-6 right-6 bg-secondary text-white p-3 rounded-full shadow-lg z-50"
+          onClick={() => setIsWishlistOpen(true)}
+        >
+          <IoMdList className="text-xl" />
+        </button>
+      )}
+
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mt-6 px-4 gap-4">
         <h2 className="text-2xl font-bold text-secondary flex items-baseline gap-2">
           {stock["Issuer Name"]}
@@ -267,8 +282,8 @@ const StockDetails = () => {
           )}
         </div>
 
-        {/* Wishlist Modal */}
-        {isWishlistOpen && (
+        {/* Wishlist Sidebar/Desktop */}
+        {isWishlistOpen && !isMobile && (
           <div className="bg-white shadow-md rounded-lg p-4 absolute top-16 right-0 w-80 z-50">
             <button
               onClick={() => setIsWishlistOpen(false)}
@@ -288,7 +303,10 @@ const StockDetails = () => {
                 {wishlist.map((item) => (
                   <li
                     key={item.stockId}
-                    onClick={() => navigate(`/stock/${item.stockId}`)}
+                    onClick={() => {
+                      navigate(`/stock/${item.stockId}`);
+                      setIsWishlistOpen(false);
+                    }}
                     className="hover:bg-gray-100 p-2 rounded-md cursor-pointer transition"
                   >
                     {item.stockName}
@@ -296,6 +314,43 @@ const StockDetails = () => {
                 ))}
               </ul>
             )}
+          </div>
+        )}
+
+        {/* Mobile Wishlist Modal */}
+        {isWishlistOpen && isMobile && (
+          <div className="fixed inset-0 bg-black bg-opacity-40 backdrop-blur-sm flex justify-center items-center z-50">
+            <div className="bg-white p-4 rounded-lg w-11/12 max-w-sm relative">
+              <button
+                onClick={() => setIsWishlistOpen(false)}
+                className="absolute top-2 right-2 text-xl text-gray-600"
+              >
+                &times;
+              </button>
+              <h2 className="text-xl font-bold text-secondary mb-4">
+                Your Wishlist
+              </h2>
+              {wishlist.length === 0 ? (
+                <p className="text-sm text-gray-500 text-center">
+                  Wishlist is empty
+                </p>
+              ) : (
+                <ul className="space-y-2">
+                  {wishlist.map((item) => (
+                    <li
+                      key={item.stockId}
+                      onClick={() => {
+                        navigate(`/stock/${item.stockId}`);
+                        setIsWishlistOpen(false);
+                      }}
+                      className="hover:bg-gray-100 p-2 rounded-md cursor-pointer transition"
+                    >
+                      {item.stockName}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </div>
         )}
 
