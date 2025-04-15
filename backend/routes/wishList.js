@@ -1,38 +1,56 @@
 const express = require("express");
 const router = express.Router();
-const { wishlists } = require("../data/wishlistData");
+const WishList = require("../models/wishList");
 
-
-router.post("/", (req, res) => {
+// Add a stock to the wishlist
+router.post("/", async (req, res) => {
   const { email, stock } = req.body;
-  if (!email || !stock) {
+  if (!email || !stock || !stock.stockId || !stock.stockName) {
     return res.status(400).json({ message: "Invalid request data" });
   }
 
-  wishlists[email] = wishlists[email] || [];
-  const exists = wishlists[email].some(
-    (item) => item.stockId === stock.stockId,
-  );
-  if (!exists) {
-    wishlists[email].push(stock);
-  }
+  try {
+    const exists = await WishList.findOne({
+      userId: email,
+      stockId: stock.stockId,
+    });
+    if (exists) {
+      return res.status(200).json({ message: "Already in wishlist" });
+    }
 
-  res.json({ message: "Added to wishlist" });
+    const newEntry = new WishList({
+      userId: email,
+      stockId: stock.stockId,
+      stockName: stock.stockName,
+    });
+
+    await newEntry.save();
+    res.status(201).json({ message: "Added to wishlist" });
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
 });
 
-router.get("/:email", (req, res) => {
+// Get wishlist by user
+router.get("/:email", async (req, res) => {
   const { email } = req.params;
-  res.json(wishlists[email] || []);
+  try {
+    const items = await WishList.find({ userId: email });
+    res.json(items);
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
 });
 
-router.delete("/:email/:stockId", (req, res) => {
+// Remove a stock from wishlist
+router.delete("/:email/:stockId", async (req, res) => {
   const { email, stockId } = req.params;
-  if (wishlists[email]) {
-    wishlists[email] = wishlists[email].filter(
-      (item) => item.stockId !== stockId,
-    );
+  try {
+    await WishList.deleteOne({ userId: email, stockId });
+    res.json({ message: "Removed from wishlist" });
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
   }
-  res.json({ message: "Removed from wishlist" });
 });
 
 module.exports = router;

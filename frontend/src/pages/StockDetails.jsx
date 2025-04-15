@@ -1,9 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useStock } from "../context/StockContext.jsx";
 import { IoMdRefresh, IoMdHeartEmpty, IoMdHeart } from "react-icons/io";
 import axios from "axios";
 import StockGraph from "../components/StockGraph.jsx";
+
+const API_BASE = "https://stockviewback.onrender.com";
 
 const StockDetails = () => {
   const { selectedStock } = useStock();
@@ -19,43 +21,48 @@ const StockDetails = () => {
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
 
-  useEffect(() => {
-    const fetchStockData = async () => {
-      if (!stock || stock["Security Id"] !== id) {
-        const res = await fetch("/stock.json");
-        const data = await res.json();
-        const foundStock = data.find((stock) => stock["Security Id"] === id);
-        if (foundStock) setStock(foundStock);
-      }
+  const user = JSON.parse(localStorage.getItem("user"));
 
+  const fetchWishlist = useCallback(async () => {
+    if (!user) return;
+    try {
+      const res = await axios.get(`${API_BASE}/stock/wishlist/${user.email}`);
+      setWishlist(res.data);
+      const exists = res.data.find((item) => item.stockId === id);
+      setIsWishlisted(!!exists);
+    } catch (err) {
+      console.error("Failed to fetch wishlist:", err);
+    }
+  }, [user?.email, id]);
+
+  const fetchStockData = useCallback(async () => {
+    let currentStock = stock;
+
+    if (!currentStock || currentStock["Security Id"] !== id) {
+      const res = await fetch("/stock.json");
+      const data = await res.json();
+      currentStock = data.find((s) => s["Security Id"] === id);
+      if (currentStock) setStock(currentStock);
+    }
+
+    if (currentStock) {
       try {
-        const res = await fetch(`https://stockviewback.onrender.com/stock/${id}`);
+        const res = await fetch(`${API_BASE}/stock/${id}`);
         const data = await res.json();
         setPrice(data.priceInfo.lastPrice);
       } catch (err) {
-        console.error("Failed to fetch stock details: ", err);
+        console.error("Failed to fetch stock price:", err);
       }
-    };
-
-    const fetchWishlist = async () => {
-      const user = JSON.parse(localStorage.getItem("user"));
-      if (user) {
-        const res = await axios.get(
-          `http://localhost:3001/stock/wishlist/${user.email}`,
-        );
-        setWishlist(res.data);
-        const exists = res.data.find((item) => item.stockId === id);
-        setIsWishlisted(!!exists);
-      }
-    };
-
-    fetchStockData();
-    fetchWishlist();
+    }
   }, [id, stock]);
 
+  useEffect(() => {
+    fetchStockData();
+    fetchWishlist();
+  }, [fetchStockData, fetchWishlist]);
+
   const toggleWishlist = async () => {
-    const user = JSON.parse(localStorage.getItem("user"));
-    if (!user) return;
+    if (!user || !stock) return;
 
     const data = {
       email: user.email,
@@ -67,21 +74,18 @@ const StockDetails = () => {
 
     try {
       if (isWishlisted) {
-        await axios.delete(
-          `https://stockviewback.onrender.com/stock/wishlist/${user.email}/${id}`,
-        );
+        await axios.delete(`${API_BASE}/stock/wishlist/${user.email}/${id}`);
       } else {
-        await axios.post("https://stockviewback.onrender.com/stock/wishlist", data);
+        await axios.post(`${API_BASE}/stock/wishlist`, data);
       }
-      setIsWishlisted(!isWishlisted);
+      await fetchWishlist(); // Automatically updates list + heart icon
     } catch (err) {
       console.error("Wishlist error:", err);
     }
   };
 
   const savePrice = () => {
-    const user = JSON.parse(localStorage.getItem("user"));
-    if (!user) return;
+    if (!user || !stock) return;
 
     const alertData = {
       stockId: id,
@@ -91,7 +95,7 @@ const StockDetails = () => {
     };
 
     axios
-      .post("https://stockviewback.onrender.com/stock/alert", {
+      .post(`${API_BASE}/stock/alert`, {
         name: user.name,
         email: user.email,
         stock: alertData,
@@ -121,7 +125,7 @@ const StockDetails = () => {
           </button>
 
           {showDropdown && (
-            <div className="absolute right-0 mt-2 w-64 bg-white border rounded-lg shadow-lg z-50">
+            <div className="absolute right-0 mt-2 w-64 bg-white border rounded-lg shadow-lg z-50 max-h-64 overflow-y-auto">
               {wishlist.length === 0 ? (
                 <p className="p-4 text-sm text-gray-500 text-center">
                   Wishlist is empty
@@ -200,7 +204,7 @@ const StockDetails = () => {
               <button
                 onClick={() => {
                   setIsRefreshing(true);
-                  fetch(`http://localhost:3001/stock/${id}`)
+                  fetch(`${API_BASE}/stock/${id}`)
                     .then((res) => res.json())
                     .then((data) => setPrice(data.priceInfo.lastPrice))
                     .catch((err) =>

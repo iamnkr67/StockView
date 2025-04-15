@@ -11,7 +11,7 @@ import Hero1 from "./components/Hero/Hero1.jsx";
 import About from "./components/sections/AboutUs.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import StockDetails from "./pages/StockDetails.jsx";
-import NotFound from "./pages/404NotFound.jsx";
+import Error from "./pages/404NotFound.jsx";
 import DashboardL from "./components/LoggedInComponents/Dashboard.jsx";
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(
@@ -56,7 +56,7 @@ function App() {
             />
           )}
           <Route path="/stock/:id" element={<StockDetails />} />
-          <Route path="*" element={<NotFound />} />
+          <Route path="*" element={<Error />} />
         </Routes>
       </main>
 
