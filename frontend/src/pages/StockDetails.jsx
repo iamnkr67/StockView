@@ -328,7 +328,7 @@ const StockDetails = () => {
                 &times;
               </button>
               <h2 className="text-xl font-bold text-secondary mb-4">
-                Your Wishlist
+                My Wishlist
               </h2>
               {wishlist.length === 0 ? (
                 <p className="text-sm text-gray-500 text-center">

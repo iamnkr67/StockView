@@ -14,6 +14,7 @@ const LNavbar = ({ user }) => {
   const [filteredStocks, setFilteredStocks] = useState([]);
   const [wishlistModalOpen, setWishlistModalOpen] = useState(false);
   const [wishlist, setWishlist] = useState([]);
+  const [searchVisible, setSearchVisible] = useState(false); // For mobile search bar visibility
 
   const profileImage = null;
   const navigate = useNavigate();
@@ -34,12 +35,15 @@ const LNavbar = ({ user }) => {
       ) {
         setShowDropdown(false);
         setFilteredStocks([]);
+        if (searchVisible) {
+          setSearchVisible(false); // Close search bar when clicked outside
+        }
       }
     };
 
     document.addEventListener("mousedown", handleOutsideClick);
     return () => document.removeEventListener("mousedown", handleOutsideClick);
-  }, []);
+  }, [searchVisible]);
 
   useEffect(() => {
     fetch("/stock.json")
@@ -135,7 +139,10 @@ const LNavbar = ({ user }) => {
             className="relative w-full flex flex-col items-center"
             ref={menuRef}
           >
-            <form className="hidden lg:flex w-1/3">
+            {/* Mobile and desktop search bar */}
+            <form
+              className={`lg:flex w-1/3 ${searchVisible ? "block" : "hidden"}`}
+            >
               <input
                 ref={searchRef}
                 type="text"
@@ -195,7 +202,6 @@ const LNavbar = ({ user }) => {
                   ref={dropdownRef}
                   className="absolute right-0 mt-2 w-48 bg-white border rounded-lg shadow-lg z-50"
                 >
-                  {/* Wishlist Button */}
                   <button
                     onClick={() => {
                       setWishlistModalOpen(true);
@@ -208,7 +214,6 @@ const LNavbar = ({ user }) => {
                     Wishlist
                   </button>
 
-                  {/* Logout Button */}
                   <button
                     onClick={handleSignOut}
                     className="flex items-center gap-2 px-4 py-2 w-full text-red-600 hover:bg-gray-100"
@@ -269,7 +274,7 @@ const LNavbar = ({ user }) => {
               &times;
             </button>
             <h2 className="text-xl font-bold text-secondary mb-4">
-              Your Wishlist
+              My Wishlist
             </h2>
             {wishlist.length === 0 ? (
               <p className="text-sm text-gray-500 text-center">
