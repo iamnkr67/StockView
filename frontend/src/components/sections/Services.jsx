@@ -39,7 +39,7 @@ const ServicesData = [
     ),
     link: "#",
     icon: (<DotLottieReact
-      src="path/to/animation.lottie"
+      src="https://lottie.host/3fd2ec77-52c5-41a0-8e4d-dc74f44bed68/KZ0M1qYoZa.lottie"
       loop
       autoplay
               className="w-32 h-32"
@@ -57,10 +57,10 @@ const ServicesData = [
     ),
     link: "#",
     icon: ( <DotLottieReact
-      src="path/to/animation.lottie"
+      src="https://lottie.host/f2bda5a4-fc8e-4d6c-bd1f-ccca217d2660/j1B7QqZJIN.lottie"
       loop
       autoplay
-               className="w-32 h-32"
+      className="w-32 h-32"
     />),
     delay: 0.4,
   },
