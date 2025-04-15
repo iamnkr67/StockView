@@ -1,9 +1,11 @@
-import React from "react";
+import React, { useState } from "react";
 import { FaWhatsapp, FaEnvelope } from "react-icons/fa";
-import { TbWorldWww } from "react-icons/tb";
 import { motion } from "framer-motion";
+import CalculatorModal from "./ModalComp/CalculatorModal"; // Adjust path if needed
 
 const Footer = () => {
+  const [isCalcOpen, setIsCalcOpen] = useState(false);
+
   return (
     <footer className="py-28 bg-[#f7f7f7] ">
       <motion.div
@@ -12,12 +14,13 @@ const Footer = () => {
         className="container"
       >
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-14 md:gap-4">
-          {/* first section */}
+        
           <div className="space-y-4 max-w-[300px]">
             <h1 className="text-2xl font-bold">StockView</h1>
             <p className="text-dark2">StockView is stock website</p>
           </div>
-          {/* second section */}
+
+      
           <div className="grid grid-cols-2 gap-10">
             <div className="space-y-4">
               <h1 className="text-2xl font-bold">Products</h1>
@@ -38,11 +41,15 @@ const Footer = () => {
                 </ul>
               </div>
             </div>
+
             <div className="space-y-4">
               <h1 className="text-2xl font-bold">Quick Links</h1>
               <div className="text-dark2">
                 <ul className="space-y-2 text-lg">
-                  <li className="cursor-pointer hover:text-secondary duration-200">
+                  <li
+                    onClick={() => setIsCalcOpen(true)}
+                    className="cursor-pointer hover:text-secondary duration-200"
+                  >
                     Calculators
                   </li>
                   <li className="cursor-pointer hover:text-secondary duration-200">
@@ -55,6 +62,8 @@ const Footer = () => {
               </div>
             </div>
           </div>
+
+   
           <div className="space-y-4 max-w-[300px]" id="contact-us">
             <h1 className="text-2xl font-bold">Get In Touch</h1>
             <div className="flex items-center">
@@ -67,16 +76,17 @@ const Footer = () => {
                 Go
               </button>
             </div>
-            {/* social icons */}
+
+        
             <div className="flex space-x-6 py-3">
               <a href="https://chat.whatsapp.com/randommmm">
                 <FaWhatsapp className="cursor-pointer hover:text-primary hover:scale-105 duration-200" />
               </a>
-
               <a href="mailto:stockviewai@gmail.com">
                 <FaEnvelope className="cursor-pointer hover:text-primary hover:scale-105 duration-200" />
               </a>
             </div>
+
             <div>
               <p className="text-sm text-black">All Rights Reserved © 2025</p>
               <p className="text-sm text-black mt-2">
@@ -94,6 +104,11 @@ const Footer = () => {
           </div>
         </div>
       </motion.div>
+
+      <CalculatorModal
+        isOpen={isCalcOpen}
+        onClose={() => setIsCalcOpen(false)}
+      />
     </footer>
   );
 };
