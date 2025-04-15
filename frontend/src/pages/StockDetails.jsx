@@ -171,8 +171,8 @@ const StockDetails = () => {
         </button>
       </div>
 
-      <div className="p-4 md:p-6 flex flex-col lg:flex-row gap-6">
-        <div className="flex-1 bg-white rounded-lg shadow-md p-4 relative min-h-[500px]">
+      <div className="p-4 md:p-6 flex flex-col gap-6">
+        <div className="bg-white rounded-lg shadow-md p-4 relative min-h-[500px]">
           <div className="flex justify-between items-center mb-4">
             <div>
               <h2 className="text-lg font-bold">{stock["Security Id"]}</h2>
@@ -267,20 +267,15 @@ const StockDetails = () => {
           )}
         </div>
 
-        {(isMobile || isWishlistOpen) && (
-          <div
-            className={`bg-white shadow-md rounded-lg p-4 w-full lg:w-1/3 transition-all duration-300 ${
-              isMobile ? "fixed inset-0 z-50" : ""
-            }`}
-          >
-            {isMobile && (
-              <button
-                onClick={() => setIsWishlistOpen(false)}
-                className="text-xl text-gray-600 absolute top-4 right-4"
-              >
-                &times;
-              </button>
-            )}
+        {/* Wishlist Modal */}
+        {isWishlistOpen && (
+          <div className="bg-white shadow-md rounded-lg p-4 absolute top-16 right-0 w-80 z-50">
+            <button
+              onClick={() => setIsWishlistOpen(false)}
+              className="text-xl text-gray-600 absolute top-4 right-4"
+            >
+              &times;
+            </button>
             <h2 className="text-xl font-bold text-secondary mb-4">
               Your Wishlist
             </h2>
@@ -303,8 +298,56 @@ const StockDetails = () => {
             )}
           </div>
         )}
+
+        {/* Create Alert Modal */}
+        {isModalOpen && (
+          <div className="fixed inset-0 bg-gray-800 bg-opacity-50 flex justify-center items-center z-50">
+            <div className="bg-white p-6 rounded-lg max-w-md w-full relative">
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="absolute top-2 right-2 text-xl text-gray-600"
+              >
+                &times;
+              </button>
+              <h2 className="text-xl font-bold text-secondary mb-4">
+                Create Alert
+              </h2>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Target Price
+                </label>
+                <input
+                  type="number"
+                  placeholder="Enter target price"
+                  value={targetPrice}
+                  onChange={(e) => setTargetPrice(e.target.value)}
+                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Stop Loss
+                </label>
+                <input
+                  type="number"
+                  placeholder="Enter stop loss"
+                  value={stopLoss}
+                  onChange={(e) => setStopLoss(e.target.value)}
+                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary"
+                />
+              </div>
+              <button
+                onClick={savePrice}
+                className="w-full bg-secondary text-white py-2 px-4 rounded-lg hover:bg-secondary-dark transition"
+              >
+                Set Alert
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
+      {/* Zoom Modal */}
       {isZoomModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex justify-center items-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-4xl w-full relative">
@@ -318,52 +361,6 @@ const StockDetails = () => {
               {stock["Issuer Name"]}
             </h2>
             <StockGraph symbol={stock["Security Id"]} />
-          </div>
-        </div>
-      )}
-
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-gray-800 bg-opacity-50 flex justify-center items-center z-50">
-          <div className="bg-white p-6 rounded-lg max-w-md w-full relative">
-            <button
-              onClick={() => setIsModalOpen(false)}
-              className="absolute top-2 right-2 text-xl text-gray-600"
-            >
-              &times;
-            </button>
-            <h2 className="text-xl font-bold text-secondary mb-4">
-              Create Alert
-            </h2>
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Target Price
-              </label>
-              <input
-                type="number"
-                placeholder="Enter target price"
-                value={targetPrice}
-                onChange={(e) => setTargetPrice(e.target.value)}
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary"
-              />
-            </div>
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Stop Loss
-              </label>
-              <input
-                type="number"
-                placeholder="Enter stop loss"
-                value={stopLoss}
-                onChange={(e) => setStopLoss(e.target.value)}
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary"
-              />
-            </div>
-            <button
-              onClick={savePrice}
-              className="w-full bg-secondary text-white py-2 px-4 rounded-lg hover:bg-secondary-dark transition"
-            >
-              Set Alert
-            </button>
           </div>
         </div>
       )}
