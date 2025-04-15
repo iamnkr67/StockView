@@ -1,5 +1,5 @@
 import React, { Component } from "react";
-import { Fade } from "react-reveal";
+import { Fade } from "react-awesome-reveal";
 import "./Error.css";
 import { Link } from "react-router-dom";
 
