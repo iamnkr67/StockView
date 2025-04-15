@@ -29,7 +29,7 @@ const StockDetails = () => {
       }
 
       try {
-        const res = await fetch(`http://localhost:3001/stock/${id}`);
+        const res = await fetch(`https://stockviewback.onrender.com/stock/${id}`);
         const data = await res.json();
         setPrice(data.priceInfo.lastPrice);
       } catch (err) {
@@ -68,10 +68,10 @@ const StockDetails = () => {
     try {
       if (isWishlisted) {
         await axios.delete(
-          `http://localhost:3001/stock/wishlist/${user.email}/${id}`,
+          `https://stockviewback.onrender.com/stock/wishlist/${user.email}/${id}`,
         );
       } else {
-        await axios.post("http://localhost:3001/stock/wishlist", data);
+        await axios.post("https://stockviewback.onrender.com/stock/wishlist", data);
       }
       setIsWishlisted(!isWishlisted);
     } catch (err) {
@@ -91,7 +91,7 @@ const StockDetails = () => {
     };
 
     axios
-      .post("http://localhost:3001/stock/alert", {
+      .post("https://stockviewback.onrender.com/stock/alert", {
         name: user.name,
         email: user.email,
         stock: alertData,
