@@ -14,7 +14,7 @@ const Dashboard = () => {
       .then((data) => {
         // Filter the stocks to include only PAYTM, ADANIENT, SWIGGY, NDTV, IDEA, AHLUCONT
         const filtered = data.filter((stock) =>
-          ["PAYTM", "ADANIENT", "SWIGGY", "NDTV", "IDEA", "AHLUCONT"].includes(
+          ["PAYTM", "EIEL", "SWIGGY", "PNGJL", "KROSS", "IGIL"].includes(
             stock["Security Id"],
           ),
         );
