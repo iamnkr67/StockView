@@ -73,7 +73,7 @@ const StockGraph = ({ symbol }) => {
 
     setIsLoading(true);
 
-    fetch(`http://localhost:3001/stock/graph/${symbol}`)
+    fetch(`https://stockviewback.onrender.com/stock/graph/${symbol}`)
       .then((res) => res.json())
       .then((data) => {
         seriesRef.current.setData(data);
