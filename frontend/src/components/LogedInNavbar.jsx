@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { IoMdMenu, IoMdClose, IoMdLogOut } from "react-icons/io";
+import { IoMdMenu, IoMdClose, IoMdLogOut, IoMdList } from "react-icons/io";
 import { motion } from "framer-motion";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -12,6 +12,9 @@ const LNavbar = ({ user }) => {
   const [showDropdown, setShowDropdown] = useState(false);
   const [stock, setStocks] = useState([]);
   const [filteredStocks, setFilteredStocks] = useState([]);
+  const [wishlistModalOpen, setWishlistModalOpen] = useState(false);
+  const [wishlist, setWishlist] = useState([]);
+
   const profileImage = null;
   const navigate = useNavigate();
   const { setSelectedStock } = useStock();
@@ -66,9 +69,24 @@ const LNavbar = ({ user }) => {
       );
 
       setFilteredStocks(filtered.slice(0, 11));
-    }, 300); // Reduced timeout to make the debounce smoother
+    }, 300);
     return () => clearTimeout(searchStock);
   }, [searchQuery, stock]);
+
+  const fetchWishlist = async () => {
+    const storedUser = JSON.parse(localStorage.getItem("user"));
+    if (!storedUser?.email) return;
+
+    try {
+      const res = await fetch(
+        `https://stockviewback.onrender.com/stock/wishlist/${storedUser.email}`,
+      );
+      const data = await res.json();
+      setWishlist(data);
+    } catch (err) {
+      console.error("Failed to fetch wishlist:", err);
+    }
+  };
 
   const handleStockClick = (stock) => {
     setSearchQuery("");
@@ -175,8 +193,22 @@ const LNavbar = ({ user }) => {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
                   ref={dropdownRef}
-                  className="absolute right-0 mt-2 w-48 bg-white border rounded-lg shadow-lg"
+                  className="absolute right-0 mt-2 w-48 bg-white border rounded-lg shadow-lg z-50"
                 >
+                  {/* Wishlist Button */}
+                  <button
+                    onClick={() => {
+                      setWishlistModalOpen(true);
+                      fetchWishlist();
+                      setShowDropdown(false);
+                    }}
+                    className="flex items-center gap-2 px-4 py-2 w-full hover:bg-gray-100"
+                  >
+                    <IoMdList />
+                    Wishlist
+                  </button>
+
+                  {/* Logout Button */}
                   <button
                     onClick={handleSignOut}
                     className="flex items-center gap-2 px-4 py-2 w-full text-red-600 hover:bg-gray-100"
@@ -225,6 +257,43 @@ const LNavbar = ({ user }) => {
           </motion.div>
         )}
       </nav>
+
+      {/* Wishlist Modal */}
+      {wishlistModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 backdrop-blur-sm flex justify-center items-center z-50">
+          <div className="bg-white p-6 rounded-lg w-11/12 max-w-sm relative">
+            <button
+              onClick={() => setWishlistModalOpen(false)}
+              className="absolute top-2 right-4 text-2xl"
+            >
+              &times;
+            </button>
+            <h2 className="text-xl font-bold text-secondary mb-4">
+              Your Wishlist
+            </h2>
+            {wishlist.length === 0 ? (
+              <p className="text-sm text-gray-500 text-center">
+                No items in wishlist.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {wishlist.map((item) => (
+                  <li
+                    key={item.stockId}
+                    className="hover:bg-gray-100 p-2 rounded-md cursor-pointer transition"
+                    onClick={() => {
+                      setWishlistModalOpen(false);
+                      navigate(`/stock/${item.stockId}`);
+                    }}
+                  >
+                    {item.stockName}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      )}
 
       <ToastContainer />
     </>
