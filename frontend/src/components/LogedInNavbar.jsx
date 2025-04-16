@@ -29,7 +29,7 @@ const LNavbar = ({ user }) => {
   const dropdownRef = useRef(null);
   const searchRef = useRef(null);
   const menuRef = useRef(null);
-
+  const storedUser = JSON.parse(localStorage.getItem("user"));
   useEffect(() => {
     const handleOutsideClick = (event) => {
       if (
@@ -88,7 +88,6 @@ const LNavbar = ({ user }) => {
   }, [searchQuery, stock]);
 
   const fetchWishlist = async () => {
-    const storedUser = JSON.parse(localStorage.getItem("user"));
     if (!storedUser?.email) return;
 
     try {
@@ -125,8 +124,7 @@ const LNavbar = ({ user }) => {
     navigate("/");
   };
 
-  const userName = user?.name || "User";
-  const profileInitial = userName.charAt(0).toUpperCase();
+  const profileInitial = storedUser?.name.charAt(0).toUpperCase();
 
   return (
     <>
