@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { IoMdMenu, IoMdClose, IoMdLogOut, IoMdList } from "react-icons/io";
+import { IoMdLogOut, IoMdList } from "react-icons/io";
 import { motion } from "framer-motion";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -7,21 +7,20 @@ import { useNavigate } from "react-router-dom";
 import { useStock } from "../context/StockContext";
 
 const LNavbar = ({ user }) => {
-  const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
   const [stock, setStocks] = useState([]);
   const [filteredStocks, setFilteredStocks] = useState([]);
   const [wishlistModalOpen, setWishlistModalOpen] = useState(false);
   const [wishlist, setWishlist] = useState([]);
-  const [searchVisible, setSearchVisible] = useState(false); // For mobile search bar visibility
+  const [searchVisible, setSearchVisible] = useState(false); // Removed duplicate state
 
   const profileImage = null;
   const navigate = useNavigate();
   const { setSelectedStock } = useStock();
-  const menuRef = useRef(null);
   const dropdownRef = useRef(null);
   const searchRef = useRef(null);
+  const menuRef = useRef(null);
 
   useEffect(() => {
     const handleOutsideClick = (event) => {
@@ -35,15 +34,13 @@ const LNavbar = ({ user }) => {
       ) {
         setShowDropdown(false);
         setFilteredStocks([]);
-        if (searchVisible) {
-          setSearchVisible(false); // Close search bar when clicked outside
-        }
+        setSearchVisible(false); // Unified search visibility logic
       }
     };
 
     document.addEventListener("mousedown", handleOutsideClick);
     return () => document.removeEventListener("mousedown", handleOutsideClick);
-  }, [searchVisible]);
+  }, []);
 
   useEffect(() => {
     fetch("/stock.json")
@@ -74,6 +71,7 @@ const LNavbar = ({ user }) => {
 
       setFilteredStocks(filtered.slice(0, 11));
     }, 300);
+
     return () => clearTimeout(searchStock);
   }, [searchQuery, stock]);
 
@@ -99,8 +97,11 @@ const LNavbar = ({ user }) => {
     navigate(`/stock/${encodeURIComponent(stock["Security Id"])}`);
   };
 
-  const handleSearch = (e) => {
-    e.preventDefault();
+  const handleEnterKey = (e) => {
+    if (e.key === "Enter" && filteredStocks.length > 0) {
+      e.preventDefault();
+      handleStockClick(filteredStocks[0]);
+    }
   };
 
   const handleSignOut = () => {
@@ -109,13 +110,6 @@ const LNavbar = ({ user }) => {
     toast.success("Logged out successfully! 🚪");
     window.dispatchEvent(new Event("storage"));
     navigate("/");
-  };
-
-  const handleEnterKey = (e) => {
-    if (e.key === "Enter" && filteredStocks.length > 0) {
-      e.preventDefault();
-      handleStockClick(filteredStocks[0]);
-    }
   };
 
   const userName = user?.name || "User";
@@ -135,11 +129,11 @@ const LNavbar = ({ user }) => {
             </h1>
           </a>
 
+          {/* Desktop search input */}
           <div
             className="relative w-full flex flex-col items-center"
             ref={menuRef}
           >
-            {/* Mobile and desktop search bar */}
             <form
               className={`lg:flex w-1/3 ${searchVisible ? "block" : "hidden"}`}
             >
@@ -152,33 +146,54 @@ const LNavbar = ({ user }) => {
                 onKeyDown={handleEnterKey}
                 className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary"
               />
+              {/* Search suggestions */}
+              {filteredStocks.length > 0 && (
+                <div
+                  className="absolute mt-11 w-1/3 max-h-72 overflow-y-auto bg-white bg-opacity-90 backdrop-blur-lg shadow-lg rounded-lg z-50 no-scrollbar"
+                  style={{ border: "1px solid #ddd" }}
+                  ref={dropdownRef}
+                >
+                  {filteredStocks.map((stock, index) => (
+                    <div
+                      key={index}
+                      className="stock-item p-2 border-b border-secondary last:border-b-0 hover:bg-secondary hover:text-dark cursor-pointer"
+                      onClick={() => handleStockClick(stock)}
+                    >
+                      <h3>
+                        {stock["Issuer Name"]}{" "}
+                        <span className="text-secondary hover:text-white">
+                          ({stock["Security Id"]})
+                        </span>
+                      </h3>
+                    </div>
+                  ))}
+                </div>
+              )}
             </form>
-
-            {filteredStocks.length > 0 && (
-              <div
-                className="absolute mt-11 w-1/3 max-h-72 overflow-y-hidden bg-white bg-opacity-90 backdrop-blur-md shadow-lg rounded-lg z-50"
-                style={{ border: "1px solid #ddd", overflowX: "hidden" }}
-                ref={dropdownRef}
-              >
-                {filteredStocks.map((stock, index) => (
-                  <div
-                    key={index}
-                    className="stock-item p-2 border-b border-secondary last:border-b-0 hover:bg-secondary hover:text-dark cursor-pointer"
-                    onClick={() => handleStockClick(stock)}
-                  >
-                    <h3>
-                      {stock["Issuer Name"]}{" "}
-                      <span className="text-secondary hover:text-white">
-                        ({stock["Security Id"]}){" "}
-                      </span>
-                    </h3>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
 
           <div className="flex items-center gap-4">
+            {/* Mobile Search Icon */}
+            <div className="lg:hidden">
+              <button onClick={() => setSearchVisible(true)}>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-7 w-7 text-gray-700"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 21l-4.35-4.35M10 18a8 8 0 100-16 8 8 0 000 16z"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            {/* Profile Icon and Dropdown */}
             <div className="relative">
               <button onClick={() => setShowDropdown(!showDropdown)}>
                 {profileImage ? (
@@ -224,43 +239,8 @@ const LNavbar = ({ user }) => {
                 </motion.div>
               )}
             </div>
-
-            <div className="lg:hidden">
-              <button onClick={() => setIsOpen(!isOpen)}>
-                {isOpen ? (
-                  <IoMdClose className="text-4xl" />
-                ) : (
-                  <IoMdMenu className="text-4xl" />
-                )}
-              </button>
-            </div>
           </div>
         </motion.div>
-
-        {isOpen && (
-          <motion.div
-            initial={{ x: "100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "100%" }}
-            transition={{ duration: 0.3 }}
-            ref={menuRef}
-            className="fixed top-0 right-0 w-64 h-full bg-white shadow-lg p-6 flex flex-col z-50"
-          >
-            <form onSubmit={handleSearch} className="mb-4">
-              <input
-                type="text"
-                placeholder="Search..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={handleEnterKey}
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary"
-              />
-            </form>
-            <button onClick={handleSignOut} className="primary-btn mt-4 w-full">
-              Sign Out
-            </button>
-          </motion.div>
-        )}
       </nav>
 
       {/* Wishlist Modal */}
@@ -295,6 +275,57 @@ const LNavbar = ({ user }) => {
                   </li>
                 ))}
               </ul>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Mobile Search Modal */}
+      {searchVisible && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 backdrop-blur-sm flex justify-center items-center z-50">
+          <div className="bg-white p-6 rounded-lg w-11/12 max-w-md relative">
+            <button
+              onClick={() => {
+                setSearchVisible(false);
+                setSearchQuery("");
+                setFilteredStocks([]);
+              }}
+              className="absolute -top-1 right-4 text-2xl"
+            >
+              &times;
+            </button>
+            <input
+              ref={searchRef}
+              type="text"
+              placeholder="Search Stocks/MF/ETFs"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={handleEnterKey}
+              className="w-full px-4 py-2 border rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-secondary"
+            />
+            {filteredStocks.length > 0 ? (
+              <div className="max-h-64 overflow-y-auto space-y-2">
+                {filteredStocks.map((stock, index) => (
+                  <div
+                    key={index}
+                    className="p-2 rounded hover:bg-secondary hover:text-white cursor-pointer border-b"
+                    onClick={() => handleStockClick(stock)}
+                  >
+                    <h3>
+                      {stock["Issuer Name"]}{" "}
+                      <span className="text-secondary">
+                        ({stock["Security Id"]})
+                      </span>
+                    </h3>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              searchQuery.trim() !== "" && (
+                <p className="text-center text-gray-500 text-sm">
+                  No results found.
+                </p>
+              )
             )}
           </div>
         </div>

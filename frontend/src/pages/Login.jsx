@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { useNavigate } from "react-router-dom"; // Import useNavigate
+import { useNavigate } from "react-router-dom"; 
 import SignUp from "./SignUp";
 import axios from "axios";
 import { ToastContainer, toast } from "react-toastify";
@@ -12,7 +12,7 @@ const Login = ({ showModal, setShowModal }) => {
   const [showSignUpModal, setSignUpModal] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const navigate = useNavigate(); // Initialize useNavigate
+  const navigate = useNavigate(); 
 
   const handleLogin = async (e) => {
     e.preventDefault();

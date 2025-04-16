@@ -316,8 +316,6 @@ const StockDetails = () => {
             )}
           </div>
         )}
-
-        {/* Mobile Wishlist Modal */}
         {isWishlistOpen && isMobile && (
           <div className="fixed inset-0 bg-black bg-opacity-40 backdrop-blur-sm flex justify-center items-center z-50">
             <div className="bg-white p-4 rounded-lg w-11/12 max-w-sm relative">
