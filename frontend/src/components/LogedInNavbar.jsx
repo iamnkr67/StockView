@@ -1,19 +1,27 @@
 import React, { useState, useEffect, useRef } from "react";
-import { IoMdLogOut, IoMdList } from "react-icons/io";
+import {
+  IoMdLogOut,
+  IoMdList,
+  IoMdCalculator,
+  IoMdClose,
+} from "react-icons/io";
 import { motion } from "framer-motion";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { useNavigate } from "react-router-dom";
 import { useStock } from "../context/StockContext";
+import CalculatorModal from "./ModalComp/CalculatorModal";
 
 const LNavbar = ({ user }) => {
+  const [isCalcOpen, setIsCalcOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
   const [stock, setStocks] = useState([]);
   const [filteredStocks, setFilteredStocks] = useState([]);
   const [wishlistModalOpen, setWishlistModalOpen] = useState(false);
   const [wishlist, setWishlist] = useState([]);
-  const [searchVisible, setSearchVisible] = useState(false); // Removed duplicate state
+  const [searchVisible, setSearchVisible] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const profileImage = null;
   const navigate = useNavigate();
@@ -34,7 +42,7 @@ const LNavbar = ({ user }) => {
       ) {
         setShowDropdown(false);
         setFilteredStocks([]);
-        setSearchVisible(false); // Unified search visibility logic
+        setSearchVisible(false);
       }
     };
 
@@ -53,8 +61,11 @@ const LNavbar = ({ user }) => {
     const searchStock = setTimeout(() => {
       if (searchQuery.trim() === "") {
         setFilteredStocks([]);
+        setIsLoading(false);
         return;
       }
+
+      setIsLoading(true);
 
       const filtered = stock.filter(
         (stock) =>
@@ -70,6 +81,7 @@ const LNavbar = ({ user }) => {
       );
 
       setFilteredStocks(filtered.slice(0, 11));
+      setIsLoading(false);
     }, 300);
 
     return () => clearTimeout(searchStock);
@@ -94,6 +106,7 @@ const LNavbar = ({ user }) => {
     setSearchQuery("");
     setFilteredStocks([]);
     setSelectedStock(stock);
+    setSearchVisible(false);
     navigate(`/stock/${encodeURIComponent(stock["Security Id"])}`);
   };
 
@@ -129,7 +142,6 @@ const LNavbar = ({ user }) => {
             </h1>
           </a>
 
-          {/* Desktop search input */}
           <div
             className="relative w-full flex flex-col items-center"
             ref={menuRef}
@@ -146,7 +158,6 @@ const LNavbar = ({ user }) => {
                 onKeyDown={handleEnterKey}
                 className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary"
               />
-              {/* Search suggestions */}
               {filteredStocks.length > 0 && (
                 <div
                   className="absolute mt-11 w-1/3 max-h-72 overflow-y-auto bg-white bg-opacity-90 backdrop-blur-lg shadow-lg rounded-lg z-50 no-scrollbar"
@@ -173,7 +184,6 @@ const LNavbar = ({ user }) => {
           </div>
 
           <div className="flex items-center gap-4">
-            {/* Mobile Search Icon */}
             <div className="lg:hidden">
               <button onClick={() => setSearchVisible(true)}>
                 <svg
@@ -193,7 +203,6 @@ const LNavbar = ({ user }) => {
               </button>
             </div>
 
-            {/* Profile Icon and Dropdown */}
             <div className="relative">
               <button onClick={() => setShowDropdown(!showDropdown)}>
                 {profileImage ? (
@@ -230,6 +239,14 @@ const LNavbar = ({ user }) => {
                   </button>
 
                   <button
+                    onClick={() => setIsCalcOpen(true)}
+                    className="flex items-center gap-2 px-4 py-2 w-full hover:bg-gray-100"
+                  >
+                    <IoMdCalculator />
+                    Calculator
+                  </button>
+
+                  <button
                     onClick={handleSignOut}
                     className="flex items-center gap-2 px-4 py-2 w-full text-red-600 hover:bg-gray-100"
                   >
@@ -243,7 +260,6 @@ const LNavbar = ({ user }) => {
         </motion.div>
       </nav>
 
-      {/* Wishlist Modal */}
       {wishlistModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-40 backdrop-blur-sm flex justify-center items-center z-50">
           <div className="bg-white p-6 rounded-lg w-11/12 max-w-sm relative">
@@ -280,57 +296,56 @@ const LNavbar = ({ user }) => {
         </div>
       )}
 
-      {/* Mobile Search Modal */}
       {searchVisible && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 backdrop-blur-sm flex justify-center items-center z-50">
-          <div className="bg-white p-6 rounded-lg w-11/12 max-w-md relative">
+        <div
+          className="fixed inset-0 bg-black bg-opacity-40 backdrop-blur-sm z-50 flex justify-center items-start pt-20 px-4"
+          ref={searchRef}
+        >
+          <div className="bg-white rounded-lg w-full max-w-md shadow-xl p-10 relative">
             <button
-              onClick={() => {
-                setSearchVisible(false);
-                setSearchQuery("");
-                setFilteredStocks([]);
-              }}
-              className="absolute -top-1 right-4 text-2xl"
+              className="absolute top-2 right-2 text-xl text-gray-600 hover:text-gray-800 focus:outline-none"
+              onClick={() => setSearchVisible(false)}
             >
-              &times;
+              <IoMdClose />
             </button>
             <input
-              ref={searchRef}
               type="text"
-              placeholder="Search Stocks/MF/ETFs"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={handleEnterKey}
-              className="w-full px-4 py-2 border rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-secondary"
+              placeholder="Search stocks..."
+              className="w-full border border-gray-300 rounded px-3 py-2 mb-4 focus:border-secondary focus:outline-none"
+              autoFocus
             />
-            {filteredStocks.length > 0 ? (
-              <div className="max-h-64 overflow-y-auto space-y-2">
-                {filteredStocks.map((stock, index) => (
-                  <div
-                    key={index}
-                    className="p-2 rounded hover:bg-secondary hover:text-white cursor-pointer border-b"
-                    onClick={() => handleStockClick(stock)}
-                  >
-                    <h3>
-                      {stock["Issuer Name"]}{" "}
-                      <span className="text-secondary">
-                        ({stock["Security Id"]})
-                      </span>
-                    </h3>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              searchQuery.trim() !== "" && (
-                <p className="text-center text-gray-500 text-sm">
-                  No results found.
-                </p>
-              )
+            {isLoading && (
+              <div className="text-center text-gray-400">Loading...</div>
             )}
+            <ul>
+              {filteredStocks.map((stock) => (
+                <li
+                  key={stock["Security Id"]}
+                  onClick={() => handleStockClick(stock)}
+                  className="px-3 py-2 hover:bg-gray-100 cursor-pointer rounded"
+                >
+                  {stock["Issuer Name"]} ({stock["Security Id"]})
+                </li>
+              ))}
+              {!isLoading &&
+                filteredStocks.length === 0 &&
+                searchQuery !== "" && (
+                  <li className="px-3 py-2 text-gray-500 text-center">
+                    No results found.
+                  </li>
+                )}
+            </ul>
           </div>
         </div>
       )}
 
+      <CalculatorModal
+        isOpen={isCalcOpen}
+        onClose={() => setIsCalcOpen(false)}
+      />
       <ToastContainer />
     </>
   );
