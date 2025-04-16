@@ -23,7 +23,7 @@ const registerUser = async (req, res) => {
         _id: user._id,
         name: user.name,
         email: user.email,
-        profileInitial: user.email.charAt(0).toUpperCase(),
+        profileInitial: user.name.charAt(0).toUpperCase(),
         token: generateToken(user._id),
       });
     } else {
