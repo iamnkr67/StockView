@@ -25,7 +25,6 @@ const StockDetails = () => {
   const [price, setPrice] = useState(null);
   const [wishlist, setWishlist] = useState([]);
   const [isWishlisted, setIsWishlisted] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [isZoomModalOpen, setIsZoomModalOpen] = useState(false);
   const [targetPrice, setTargetPrice] = useState("");
   const [stopLoss, setStopLoss] = useState("");
@@ -140,7 +139,8 @@ const StockDetails = () => {
         stock: alertData,
       });
       showAlert("Price alert is created");
-      setIsModalOpen(false);
+      setTargetPrice("");
+      setStopLoss("");
       fetchAlerts();
     } catch (error) {
       alert(error.response?.data?.message || "Failed to set alert.");
@@ -162,32 +162,12 @@ const StockDetails = () => {
         </div>
       )}
 
-      {/* Floating Wishlist Icon (Mobile Only) */}
-      {isMobile && (
-        <button
-          className="fixed bottom-6 right-6 bg-secondary text-white p-3 rounded-full shadow-lg z-50"
-          onClick={() => setIsWishlistOpen(true)}
-        >
-          <IoMdList className="text-xl" />
-        </button>
-      )}
-
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mt-6 px-4 gap-4">
-        <h2 className="text-2xl font-bold text-secondary flex items-baseline gap-2">
-          {stock["Issuer Name"]}
-          <span className="text-sm text-gray-500">{stock["Instrument"]}</span>
-        </h2>
-        <button
-          onClick={() => setIsWishlistOpen((prev) => !prev)}
-          className="text-3xl text-gray-600 lg:block hidden"
-          title="Toggle Wishlist"
-        >
-          {isWishlistOpen ? <MdChevronLeft /> : <MdChevronRight />}
-        </button>
-      </div>
-
-      <div className="p-4 md:p-6 flex flex-col gap-6">
-        <div className="bg-white rounded-lg shadow-md p-4 relative min-h-[500px]">
+      <h2 className="text-2xl font-bold text-secondary m-7 flex items-baseline gap-2">
+        {stock["Issuer Name"]}
+        <span className="text-sm text-gray-500">{stock["Instrument"]}</span>
+      </h2>
+      <div className="p-4 md:p-6 flex flex-col lg:flex-row gap-6">
+        <div className="bg-white rounded-lg shadow-md p-4 w-full lg:w-3/4 relative">
           <div className="flex justify-between items-center mb-4">
             <div>
               <h2 className="text-lg font-bold">{stock["Security Id"]}</h2>
@@ -205,11 +185,15 @@ const StockDetails = () => {
               </button>
 
               {price !== null ? (
-                <span className="text-md font-semibold text-gray-700">
-                  ₹ {price}
+                <span>
+                  ₹{" "}
+                  <span className="text-md font-semibold text-gray-700">
+                    {price}
+                  </span>
                 </span>
               ) : (
                 <span className="flex items-center gap-1 text-gray-500">
+                  <span className="flex items-center gap-1">₹ </span>
                   {[...Array(3)].map((_, i) => (
                     <span
                       key={i}
@@ -242,17 +226,10 @@ const StockDetails = () => {
                   className={`${isRefreshing ? "animate-spin" : ""}`}
                 />
               </button>
-
-              <button
-                onClick={() => setIsModalOpen(true)}
-                className="bg-secondary text-white py-1 px-3 rounded-md text-sm"
-              >
-                Create Alert
-              </button>
             </div>
           </div>
 
-          <div className="w-full h-[300px] md:h-[400px]">
+          <div className="w-full h-[400px] md:h-[400px]">
             <StockGraph symbol={stock["Security Id"]} />
           </div>
 
@@ -282,125 +259,64 @@ const StockDetails = () => {
           )}
         </div>
 
-        {/* Wishlist Sidebar/Desktop */}
-        {isWishlistOpen && !isMobile && (
-          <div className="bg-white shadow-md rounded-lg p-4 absolute top-16 right-0 w-80 z-50">
-            <button
-              onClick={() => setIsWishlistOpen(false)}
-              className="text-xl text-gray-600 absolute top-4 right-4"
-            >
-              &times;
-            </button>
-            <h2 className="text-xl font-bold text-secondary mb-4">
-              Your Wishlist
-            </h2>
-            {wishlist.length === 0 ? (
-              <p className="text-sm text-gray-500 text-center">
-                Wishlist is empty
-              </p>
+        <div className="bg-white rounded-lg shadow-md p-6 w-full lg:w-1/4">
+          <h2 className="text-xl font-bold text-secondary mb-4">
+            Create Alert
+          </h2>
+
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Enter Target Price
+          </label>
+          <input
+            type="number"
+            placeholder="Target Price"
+            value={targetPrice}
+            onChange={(e) => setTargetPrice(e.target.value)}
+            className="w-full mb-4 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary"
+          />
+
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Current Price
+          </label>
+          <div className="w-full mb-4 px-4 py-2 border rounded-lg bg-gray-100 text-gray-600 flex items-center h-[42px]">
+            {price !== null ? (
+              <span>₹ {price}</span>
             ) : (
-              <ul className="space-y-2">
-                {wishlist.map((item) => (
-                  <li
-                    key={item.stockId}
-                    onClick={() => {
-                      navigate(`/stock/${item.stockId}`);
-                      setIsWishlistOpen(false);
-                    }}
-                    className="hover:bg-gray-100 p-2 rounded-md cursor-pointer transition"
+              <span className="flex items-center gap-1">
+                ₹
+                {[...Array(3)].map((_, i) => (
+                  <span
+                    key={i}
+                    className="text-xl animate-bounce"
+                    style={{ animationDelay: `${i * 0.2}s` }}
                   >
-                    {item.stockName}
-                  </li>
+                    .
+                  </span>
                 ))}
-              </ul>
+              </span>
             )}
           </div>
-        )}
-        {isWishlistOpen && isMobile && (
-          <div className="fixed inset-0 bg-black bg-opacity-40 backdrop-blur-sm flex justify-center items-center z-50">
-            <div className="bg-white p-4 rounded-lg w-11/12 max-w-sm relative">
-              <button
-                onClick={() => setIsWishlistOpen(false)}
-                className="absolute top-2 right-2 text-xl text-gray-600"
-              >
-                &times;
-              </button>
-              <h2 className="text-xl font-bold text-secondary mb-4">
-                My Wishlist
-              </h2>
-              {wishlist.length === 0 ? (
-                <p className="text-sm text-gray-500 text-center">
-                  Wishlist is empty
-                </p>
-              ) : (
-                <ul className="space-y-2">
-                  {wishlist.map((item) => (
-                    <li
-                      key={item.stockId}
-                      onClick={() => {
-                        navigate(`/stock/${item.stockId}`);
-                        setIsWishlistOpen(false);
-                      }}
-                      className="hover:bg-gray-100 p-2 rounded-md cursor-pointer transition"
-                    >
-                      {item.stockName}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </div>
-        )}
 
-        {/* Create Alert Modal */}
-        {isModalOpen && (
-          <div className="fixed inset-0 bg-gray-800 bg-opacity-50 flex justify-center items-center z-50">
-            <div className="bg-white p-6 rounded-lg max-w-md w-full relative">
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="absolute top-2 right-2 text-xl text-gray-600"
-              >
-                &times;
-              </button>
-              <h2 className="text-xl font-bold text-secondary mb-4">
-                Create Alert
-              </h2>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Target Price
-                </label>
-                <input
-                  type="number"
-                  placeholder="Enter target price"
-                  value={targetPrice}
-                  onChange={(e) => setTargetPrice(e.target.value)}
-                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary"
-                />
-              </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Stop Loss
-                </label>
-                <input
-                  type="number"
-                  placeholder="Enter stop loss"
-                  value={stopLoss}
-                  onChange={(e) => setStopLoss(e.target.value)}
-                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary"
-                />
-              </div>
-              <button
-                onClick={savePrice}
-                className="w-full bg-secondary text-white py-2 px-4 rounded-lg hover:bg-secondary-dark transition"
-              >
-                Set Alert
-              </button>
-            </div>
-          </div>
-        )}
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Stop Loss
+          </label>
+          <input
+            type="number"
+            placeholder="Stop Loss"
+            value={stopLoss}
+            onChange={(e) => setStopLoss(e.target.value)}
+            className="w-full mb-6 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary"
+          />
+
+          <button
+            onClick={savePrice}
+            className="w-full bg-secondary text-white py-2 px-4 rounded-lg hover:bg-secondary-dark transition"
+          >
+            Set Alert
+          </button>
+        </div>
       </div>
 
-      {/* Zoom Modal */}
       {isZoomModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex justify-center items-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-4xl w-full relative">
