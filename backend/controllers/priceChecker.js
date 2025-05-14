@@ -3,7 +3,6 @@ const nodemailer = require("nodemailer");
 const StockUser = require("../models/alertPrice");
 const dotenv = require("dotenv").config();
 
-
 let transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
@@ -21,7 +20,7 @@ const checkStockPrices = async () => {
 
       for (const stock of user.stock) {
         const response = await axios.get(
-          `https://stockviewback.onrender.com/stock/${stock.stockId}`
+          `http://localhost:3000/stock/${stock.stockId}`,
         );
         const currentPrice = response.data.priceInfo.lastPrice;
 
@@ -31,18 +30,17 @@ const checkStockPrices = async () => {
             user.email,
             stock,
             "Target Price Reached",
-            currentPrice
+            currentPrice,
           );
         } else if (currentPrice <= stock.stopLoss) {
-            await sendEmail(
+          await sendEmail(
             user.name,
             user.email,
             stock,
             "Stop Loss Triggered",
-            currentPrice
+            currentPrice,
           );
-        }
-        else {
+        } else {
           stocksToKeep.push(stock); // Keep the stock if neither condition is met
         }
       }
@@ -54,7 +52,7 @@ const checkStockPrices = async () => {
   }
 };
 
-const sendEmail = async (name,email, stock, subject, currentPrice) => {
+const sendEmail = async (name, email, stock, subject, currentPrice) => {
   const mailOptions = {
     from: "your-email@gmail.com",
     to: email,
@@ -83,4 +81,4 @@ const schedulePriceCheck = () => {
     checkStockPrices();
   }, 600000); // 10 minutes in milliseconds
 };
-module.exports = {schedulePriceCheck}
+module.exports = { schedulePriceCheck };

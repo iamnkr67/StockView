@@ -1,44 +1,60 @@
 const express = require("express");
-const axios = require("axios");
 const router = express.Router();
+const axios = require("axios");
 
-// POST endpoint for AI recommendation
-router.post("/recommendation", async (req, res) => {
+const GEMINI_API_KEY = "YOUR_ACTUAL_API_KEY"; // Replace with your actual API key
+
+router.post("/analyze", async (req, res) => {
   const { stockId, lastPrice, currentPrice } = req.body;
 
-  // Ensure that the required data is provided
   if (!stockId || !lastPrice || !currentPrice) {
-    return res.status(400).json({ error: "Missing required parameters" });
+    return res.status(400).json({ error: "Missing required fields" });
   }
 
-  // Create a prompt for the AI model based on the provided stock data
-  const prompt = `
-You are a trading assistant. 
-If the stock price increases from the last to current, it might be good to 'Hold' or 'Buy'.
-If it decreases, it might be good to 'Sell'.
-Decide based on this data:
-Stock: ${stockId}
-Last Price: ₹${lastPrice}
-Current Price: ₹${currentPrice}
-
-Respond with one word only: Buy, Sell, or Hold.
-`;
+  prompt = `
+  Given the following stock information:
+  
+  Symbol: ${stockData.info.symbol}
+  Company Name: ${stockData.info.companyName}
+  Industry: ${stockData.info.industry}
+  
+  Current Price: ₹${stockData.priceInfo.lastPrice}
+  Change: ${stockData.priceInfo.change} (${stockData.priceInfo.pChange}%)
+  Previous Close: ₹${stockData.priceInfo.previousClose}
+  VWAP: ₹${stockData.priceInfo.vwap}
+  52 Week High: ₹${conststockData.priceInfo.weekHighLow.max}
+  52 Week Low: ₹${stockData.priceInfo.weekHighLow.min}
+  
+  Analyze this stock and provide a simple recommendation: Buy, Sell, or Hold. Base your answer only on this data and explain briefly.
+  `;
 
   try {
-    // Send request to Gemini API for AI-generated content
-    const geminiRes = await axios.post(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${process.env.GEMINI_API_KEY}`,
+    const response = await axios.post(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
       {
-        contents: [{ parts: [{ text: prompt }] }],
+        contents: [
+          {
+            parts: [{ text: prompt }],
+          },
+        ],
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
       },
     );
 
-    // Extract the decision from the response
-    const decision = geminiRes.data.candidates[0].content.parts[0].text.trim();
-    res.json({ decision }); // Return AI decision (Buy, Sell, or Hold)
+    const aiResponse =
+      response.data?.candidates?.[0]?.content?.parts?.[0]?.text ||
+      "No response from AI";
+    res.json({ recommendation: aiResponse });
   } catch (error) {
-    console.error("Gemini API error:", error.response?.data || error.message);
-    res.status(500).json({ error: "Gemini AI error" });
+    console.error(
+      "Error calling Gemini API:",
+      error.response?.data || error.message,
+    );
+    res.status(500).json({ error: "Failed to fetch AI recommendation" });
   }
 });
 
