@@ -31,7 +31,7 @@ const SignUp = ({ showModal, setShowModal }) => {
 
     try {
       const response = await axios.post(
-        "https://stockviewback.onrender.com/api/user/register",
+        "https://stockviewbackend.onrender.com/api/user/register",
         { name, email, password },
       );
 

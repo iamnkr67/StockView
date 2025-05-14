@@ -20,7 +20,7 @@ const checkStockPrices = async () => {
 
       for (const stock of user.stock) {
         const response = await axios.get(
-          `https://stockviewback.onrender.com/stock/${stock.stockId}`,
+          `https://stockviewbackend.onrender.com/stock/${stock.stockId}`,
         );
         const currentPrice = response.data.priceInfo.lastPrice;
 
