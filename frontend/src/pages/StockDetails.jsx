@@ -1,8 +1,14 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useStock } from "../context/StockContext.jsx";
-import { IoMdRefresh, IoMdHeartEmpty, IoMdHeart } from "react-icons/io";
+import {
+  IoMdRefresh,
+  IoMdHeartEmpty,
+  IoMdHeart,
+  IoMdList,
+} from "react-icons/io";
 import { LuZoomIn } from "react-icons/lu";
+import { MdChevronRight, MdChevronLeft } from "react-icons/md";
 import axios from "axios";
 import StockGraph from "../components/StockGraph.jsx";
 import { Alert } from "@mui/material";
@@ -17,18 +23,25 @@ const StockDetails = () => {
 
   const [stock, setStock] = useState(selectedStock || null);
   const [price, setPrice] = useState(null);
-  const [lastPrice, setLastPrice] = useState(null);
-  const [aiSignal, setAiSignal] = useState(null);
+  const [aiRecommendation, setAiRecommendation] = useState(null); // For AI recommendation (Buy/Sell/Hold)
   const [wishlist, setWishlist] = useState([]);
   const [isWishlisted, setIsWishlisted] = useState(false);
+  const [isZoomModalOpen, setIsZoomModalOpen] = useState(false);
   const [targetPrice, setTargetPrice] = useState("");
   const [stopLoss, setStopLoss] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [alertMessage, setAlertMessage] = useState(null);
+  const [isWishlistOpen, setIsWishlistOpen] = useState(false);
   const [alerts, setAlerts] = useState([]);
-  const [isZoomModalOpen, setIsZoomModalOpen] = useState(false);
 
   const user = JSON.parse(localStorage.getItem("user"));
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const showAlert = (message) => {
     setAlertMessage(message);
@@ -56,23 +69,6 @@ const StockDetails = () => {
     }
   }, [user?.email, id]);
 
-  const fetchAiDecision = useCallback(
-    async (last, current) => {
-      try {
-        const res = await axios.post(`${API_BASE}/api/ai/recommendation`, {
-          stockId: id,
-          lastPrice: last,
-          currentPrice: current,
-        });
-        setAiSignal(res.data.decision);
-      } catch (err) {
-        console.error("AI decision error:", err);
-        setAiSignal("N/A");
-      }
-    },
-    [id],
-  );
-
   const fetchStockData = useCallback(async () => {
     let currentStock = stock;
     if (!currentStock || currentStock["Security Id"] !== id) {
@@ -91,18 +87,33 @@ const StockDetails = () => {
           if (!data.priceInfo?.lastPrice) {
             await new Promise((resolve) => setTimeout(resolve, 1000));
           } else {
-            const current = data.priceInfo.lastPrice;
-            const last = data.priceInfo.previousClose;
-            setPrice(current);
-            setLastPrice(last);
-            fetchAiDecision(last, current);
+            setPrice(data.priceInfo.lastPrice);
           }
         }
       } catch (err) {
         console.error("Failed to fetch stock price:", err);
       }
     }
-  }, [id, stock, fetchAiDecision]);
+  }, [id, stock]);
+
+  // Fetch AI recommendation when price is set
+  useEffect(() => {
+    const fetchAiRecommendation = async () => {
+      if (price && stock) {
+        try {
+          const res = await axios.post(`${API_BASE}/ai/stock-analysis`, {
+            symbol: stock["Security Id"],
+            price: price,
+          });
+          setAiRecommendation(res.data.recommendation); // Set the recommendation (Buy/Sell/Hold)
+        } catch (error) {
+          console.error("Failed to fetch AI recommendation:", error);
+        }
+      }
+    };
+
+    fetchAiRecommendation();
+  }, [price, stock]);
 
   useEffect(() => {
     fetchStockData();
@@ -199,11 +210,6 @@ const StockDetails = () => {
                   <span className="text-md font-semibold text-gray-700">
                     {price}
                   </span>
-                  {aiSignal && (
-                    <span className="ml-2 text-sm text-blue-600">
-                      ({aiSignal})
-                    </span>
-                  )}
                 </span>
               ) : (
                 <span className="flex items-center gap-1 text-gray-500">
@@ -226,13 +232,7 @@ const StockDetails = () => {
                   setPrice(null);
                   fetch(`${API_BASE}/stock/${id}`)
                     .then((res) => res.json())
-                    .then((data) => {
-                      const current = data.priceInfo.lastPrice;
-                      const last = data.priceInfo.previousClose;
-                      setPrice(current);
-                      setLastPrice(last);
-                      fetchAiDecision(last, current);
-                    })
+                    .then((data) => setPrice(data.priceInfo.lastPrice))
                     .catch((err) =>
                       console.error("Failed to refresh price:", err),
                     )
@@ -261,6 +261,19 @@ const StockDetails = () => {
             >
               <LuZoomIn />
             </button>
+          </div>
+
+          <div className="mt-6">
+            <h3 className="text-md font-semibold text-secondary mb-2">
+              AI Recommendation
+            </h3>
+            {aiRecommendation ? (
+              <p className="text-lg font-semibold text-gray-700">
+                {aiRecommendation}
+              </p>
+            ) : (
+              <p className="text-gray-500">Loading AI recommendation...</p>
+            )}
           </div>
 
           {alerts.length > 0 && (
