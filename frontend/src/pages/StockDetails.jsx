@@ -1,46 +1,33 @@
 import { useEffect, useState, useCallback } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { useStock } from "../context/StockContext.jsx";
-import {
-  IoMdRefresh,
-  IoMdHeartEmpty,
-  IoMdHeart,
-  IoMdList,
-} from "react-icons/io";
+import { IoMdRefresh, IoMdHeartEmpty, IoMdHeart } from "react-icons/io";
 import { LuZoomIn } from "react-icons/lu";
-import { MdChevronRight, MdChevronLeft } from "react-icons/md";
+import { ArrowUp, ArrowDown } from "lucide-react";
 import axios from "axios";
 import StockGraph from "../components/StockGraph.jsx";
 import { Alert } from "@mui/material";
 import CheckIcon from "@mui/icons-material/Check";
 
-const API_BASE = "https://stockviewback.onrender.com";
+const API_BASE = "http://localhost:3000";
 
 const StockDetails = () => {
   const { selectedStock } = useStock();
   const { id } = useParams();
-  const navigate = useNavigate();
-
   const [stock, setStock] = useState(selectedStock || null);
   const [price, setPrice] = useState(null);
+  const [changeRate, setChangeRate] = useState(null);
+  const [changePercent, setChangePercent] = useState(null);
   const [wishlist, setWishlist] = useState([]);
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [isZoomModalOpen, setIsZoomModalOpen] = useState(false);
   const [targetPrice, setTargetPrice] = useState("");
   const [stopLoss, setStopLoss] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [alertMessage, setAlertMessage] = useState(null);
-  const [isWishlistOpen, setIsWishlistOpen] = useState(false);
   const [alerts, setAlerts] = useState([]);
 
   const user = JSON.parse(localStorage.getItem("user"));
-
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 768);
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
 
   const showAlert = (message) => {
     setAlertMessage(message);
@@ -69,36 +56,42 @@ const StockDetails = () => {
   }, [user?.email, id]);
 
   const fetchStockData = useCallback(async () => {
-    let currentStock = stock;
-    if (!currentStock || currentStock["Security Id"] !== id) {
-      const res = await fetch("/stock.json");
-      const data = await res.json();
-      currentStock = data.find((s) => s["Security Id"] === id);
-      if (currentStock) setStock(currentStock);
-    }
-    if (currentStock) {
-      try {
-        setPrice(null);
-        let data = null;
-        while (!data) {
-          const res = await fetch(`${API_BASE}/stock/${id}`);
-          data = await res.json();
-          if (!data.priceInfo?.lastPrice) {
-            await new Promise((resolve) => setTimeout(resolve, 1000));
-          } else {
-            setPrice(data.priceInfo.lastPrice);
-          }
-        }
-      } catch (err) {
-        console.error("Failed to fetch stock price:", err);
+    try {
+      let currentStock = stock;
+      if (!currentStock || currentStock["Security Id"] !== id) {
+        const res = await fetch("/stock.json");
+        const data = await res.json();
+        currentStock = data.find((s) => s["Security Id"] === id);
+        if (currentStock) setStock(currentStock);
       }
+
+      if (!currentStock) return;
+
+      const res = await fetch(`${API_BASE}/stock/${id}`);
+      const data = await res.json();
+      const priceInfo = data?.priceInfo;
+
+      if (
+        priceInfo?.lastPrice &&
+        (priceInfo.lastPrice !== price ||
+          priceInfo.change !== changeRate ||
+          priceInfo.pChange !== changePercent)
+      ) {
+        setPrice(priceInfo.lastPrice);
+        setChangeRate(priceInfo.change);
+        setChangePercent(priceInfo.pChange);
+      }
+    } catch (err) {
+      console.error("Failed to fetch stock data:", err);
     }
-  }, [id, stock]);
+  }, [id, stock, price, changeRate, changePercent]);
 
   useEffect(() => {
     fetchStockData();
     fetchWishlist();
     fetchAlerts();
+    const interval = setInterval(fetchStockData, 10000);
+    return () => clearInterval(interval);
   }, [fetchStockData, fetchWishlist, fetchAlerts]);
 
   const toggleWishlist = async () => {
@@ -126,31 +119,48 @@ const StockDetails = () => {
 
   const savePrice = async () => {
     if (!user || !stock) return;
-    const alertData = {
-      stockId: id,
-      stockName: stock["Issuer Name"],
-      targetPrice: parseFloat(targetPrice),
-      stopLoss: parseFloat(stopLoss),
-    };
     try {
       await axios.post(`${API_BASE}/stock/alert`, {
         name: user.name,
         email: user.email,
-        stock: alertData,
+        stock: {
+          stockId: id,
+          stockName: stock["Issuer Name"],
+          targetPrice: parseFloat(targetPrice),
+          stopLoss: parseFloat(stopLoss),
+        },
       });
       showAlert("Price alert is created");
       setTargetPrice("");
       setStopLoss("");
       fetchAlerts();
-    } catch (error) {
-      alert(error.response?.data?.message || "Failed to set alert.");
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to set alert.");
     }
   };
 
-  if (!stock)
+  const refreshPrice = async () => {
+    setIsRefreshing(true);
+    try {
+      const res = await fetch(`${API_BASE}/stock/${id}`);
+      const data = await res.json();
+      if (data?.priceInfo?.lastPrice) {
+        setPrice(data.priceInfo.lastPrice);
+        setChangeRate(data.priceInfo.change);
+        setChangePercent(data.priceInfo.pChange);
+      }
+    } catch (err) {
+      console.error("Refresh failed:", err);
+    } finally {
+      setTimeout(() => setIsRefreshing(false), 800);
+    }
+  };
+
+  if (!stock) {
     return (
       <p className="text-center text-gray-500 p-8">Loading stock details...</p>
     );
+  }
 
   return (
     <>
@@ -162,11 +172,13 @@ const StockDetails = () => {
         </div>
       )}
 
-      <h2 className="text-2xl font-bold text-secondary m-7 flex items-baseline gap-2">
-        {stock["Issuer Name"]}
+      <h2 className="text-2xl font-bold text-secondary m-7">
+        {stock["Issuer Name"]}{" "}
         <span className="text-sm text-gray-500">{stock["Instrument"]}</span>
       </h2>
+
       <div className="p-4 md:p-6 flex flex-col lg:flex-row gap-6">
+        {/* Left Section */}
         <div className="bg-white rounded-lg shadow-md p-4 w-full lg:w-3/4 relative">
           <div className="flex justify-between items-center mb-4">
             <div>
@@ -175,7 +187,6 @@ const StockDetails = () => {
                 {stock["Industry New Name"]}
               </p>
             </div>
-
             <div className="flex items-center gap-3">
               <button
                 onClick={toggleWishlist}
@@ -183,17 +194,33 @@ const StockDetails = () => {
               >
                 {isWishlisted ? <IoMdHeart /> : <IoMdHeartEmpty />}
               </button>
-
               {price !== null ? (
-                <span>
-                  ₹{" "}
+                <>
+                  <span className="text-sm font-medium text-gray-600">₹</span>
                   <span className="text-md font-semibold text-gray-700">
                     {price}
                   </span>
-                </span>
+                  <span
+                    className={`inline-flex items-center text-md font-semibold ${
+                      changeRate > 0 ? "text-green-600" : "text-red-600"
+                    }`}
+                  >
+                    {changeRate > 0 ? (
+                      <ArrowUp className="w-4 h-4" />
+                    ) : (
+                      <ArrowDown className="w-4 h-4" />
+                    )}
+                    <span>
+                      {changeRate > 0
+                        ? `+${changeRate.toFixed(2)}`
+                        : changeRate.toFixed(2)}
+                    </span>
+                    <span>({Math.abs(changePercent).toFixed(2)}%)</span>
+                  </span>
+                </>
               ) : (
-                <span className="flex items-center gap-1 text-gray-500">
-                  <span className="flex items-center gap-1">₹ </span>
+                <span className="flex items-center gap-1 text-gray-400">
+                  ₹{" "}
                   {[...Array(3)].map((_, i) => (
                     <span
                       key={i}
@@ -205,23 +232,7 @@ const StockDetails = () => {
                   ))}
                 </span>
               )}
-
-              <button
-                onClick={() => {
-                  setIsRefreshing(true);
-                  setPrice(null);
-                  fetch(`${API_BASE}/stock/${id}`)
-                    .then((res) => res.json())
-                    .then((data) => setPrice(data.priceInfo.lastPrice))
-                    .catch((err) =>
-                      console.error("Failed to refresh price:", err),
-                    )
-                    .finally(() =>
-                      setTimeout(() => setIsRefreshing(false), 1000),
-                    );
-                }}
-                className="text-gray-600"
-              >
+              <button onClick={refreshPrice} className="text-gray-600">
                 <IoMdRefresh
                   className={`${isRefreshing ? "animate-spin" : ""}`}
                 />
@@ -229,11 +240,11 @@ const StockDetails = () => {
             </div>
           </div>
 
-          <div className="w-full h-[400px] md:h-[400px]">
+          <div className="w-full h-[400px]">
             <StockGraph symbol={stock["Security Id"]} />
           </div>
 
-          <div className="flex justify-end">
+          <div className="flex justify-end mt-4">
             <button
               onClick={() => setIsZoomModalOpen(true)}
               className="text-xl bg-gray-100 hover:bg-gray-200 p-2 rounded-lg"
@@ -248,9 +259,9 @@ const StockDetails = () => {
               <h3 className="text-md font-semibold text-secondary mb-2">
                 Price Alerts
               </h3>
-              <ul className="space-y-2">
-                {alerts.map((alert, index) => (
-                  <li key={index} className="text-sm text-gray-700">
+              <ul className="space-y-2 text-sm text-gray-700">
+                {alerts.map((alert, idx) => (
+                  <li key={idx}>
                     Target: ₹{alert.targetPrice} | Stop Loss: ₹{alert.stopLoss}
                   </li>
                 ))}
@@ -259,31 +270,29 @@ const StockDetails = () => {
           )}
         </div>
 
+        {/* Right Section */}
         <div className="bg-white rounded-lg shadow-md p-6 w-full lg:w-1/4">
           <h2 className="text-xl font-bold text-secondary mb-4">
             Create Alert
           </h2>
-
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Enter Target Price
           </label>
           <input
             type="number"
-            placeholder="Target Price"
             value={targetPrice}
             onChange={(e) => setTargetPrice(e.target.value)}
             className="w-full mb-4 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary"
           />
-
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Current Price
           </label>
-          <div className="w-full mb-4 px-4 py-2 border rounded-lg bg-gray-100 text-gray-600 flex items-center h-[42px]">
+          <div className="w-full mb-4 px-4 py-2 border rounded-lg bg-gray-100 text-gray-600 h-[42px] flex items-center">
             {price !== null ? (
               <span>₹ {price}</span>
             ) : (
               <span className="flex items-center gap-1">
-                ₹
+                ₹{" "}
                 {[...Array(3)].map((_, i) => (
                   <span
                     key={i}
@@ -296,18 +305,15 @@ const StockDetails = () => {
               </span>
             )}
           </div>
-
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Stop Loss
           </label>
           <input
             type="number"
-            placeholder="Stop Loss"
             value={stopLoss}
             onChange={(e) => setStopLoss(e.target.value)}
             className="w-full mb-6 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary"
           />
-
           <button
             onClick={savePrice}
             className="w-full bg-secondary text-white py-2 px-4 rounded-lg hover:bg-secondary-dark transition"
@@ -318,7 +324,7 @@ const StockDetails = () => {
       </div>
 
       {isZoomModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex justify-center items-center z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-4xl w-full relative">
             <button
               onClick={() => setIsZoomModalOpen(false)}
