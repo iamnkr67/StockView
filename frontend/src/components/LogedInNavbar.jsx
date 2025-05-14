@@ -92,7 +92,7 @@ const LNavbar = ({ user }) => {
 
     try {
       const res = await fetch(
-        `http://localhost:3000/stock/wishlist/${storedUser.email}`,
+        `https://stockviewback.onrender.com/stock/wishlist/${storedUser.email}`,
       );
       const data = await res.json();
       setWishlist(data);
