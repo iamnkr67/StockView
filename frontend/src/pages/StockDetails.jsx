@@ -23,7 +23,6 @@ const StockDetails = () => {
 
   const [stock, setStock] = useState(selectedStock || null);
   const [price, setPrice] = useState(null);
-  const [aiRecommendation, setAiRecommendation] = useState(null); // For AI recommendation (Buy/Sell/Hold)
   const [wishlist, setWishlist] = useState([]);
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [isZoomModalOpen, setIsZoomModalOpen] = useState(false);
@@ -95,25 +94,6 @@ const StockDetails = () => {
       }
     }
   }, [id, stock]);
-
-  // Fetch AI recommendation when price is set
-  useEffect(() => {
-    const fetchAiRecommendation = async () => {
-      if (price && stock) {
-        try {
-          const res = await axios.post(`${API_BASE}/ai/stock-analysis`, {
-            symbol: stock["Security Id"],
-            price: price,
-          });
-          setAiRecommendation(res.data.recommendation); // Set the recommendation (Buy/Sell/Hold)
-        } catch (error) {
-          console.error("Failed to fetch AI recommendation:", error);
-        }
-      }
-    };
-
-    fetchAiRecommendation();
-  }, [price, stock]);
 
   useEffect(() => {
     fetchStockData();
@@ -261,19 +241,6 @@ const StockDetails = () => {
             >
               <LuZoomIn />
             </button>
-          </div>
-
-          <div className="mt-6">
-            <h3 className="text-md font-semibold text-secondary mb-2">
-              AI Recommendation
-            </h3>
-            {aiRecommendation ? (
-              <p className="text-lg font-semibold text-gray-700">
-                {aiRecommendation}
-              </p>
-            ) : (
-              <p className="text-gray-500">Loading AI recommendation...</p>
-            )}
           </div>
 
           {alerts.length > 0 && (
