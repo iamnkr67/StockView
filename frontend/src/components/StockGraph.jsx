@@ -87,7 +87,7 @@ const StockGraph = ({ symbol }) => {
       });
     }
 
-    fetch(`https://stockviewbackend.onrender.com/stock/graph/${symbol}`)
+    fetch(`https://stockviewback.onrender.com/stock/graph/${symbol}`)
       .then((res) => res.json())
       .then((data) => {
         if (data && data.length > 0 && seriesRef.current) {

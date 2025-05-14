@@ -9,7 +9,7 @@ import StockGraph from "../components/StockGraph.jsx";
 import { Alert } from "@mui/material";
 import CheckIcon from "@mui/icons-material/Check";
 
-const API_BASE = "https://stockviewbackend.onrender.com";
+const API_BASE = "https://stockviewback.onrender.com";
 
 const StockDetails = () => {
   const { selectedStock } = useStock();

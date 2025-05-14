@@ -23,7 +23,7 @@ const Dashboard = () => {
 
         const pricePromises = filtered.map((stock) =>
           fetch(
-            `https://stockviewbackend.onrender.com/stock/${stock["Security Id"]}`,
+            `https://stockviewback.onrender.com/stock/${stock["Security Id"]}`,
           )
             .then((res) => res.json())
             .then((priceData) => ({
