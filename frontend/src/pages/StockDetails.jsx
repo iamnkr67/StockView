@@ -99,7 +99,7 @@ const StockDetails = () => {
     fetchStockData();
     fetchWishlist();
     fetchAlerts();
-  }, [fetchStockData, fetchWishlist, fetchAlerts]);
+  }, []);
 
   const toggleWishlist = async () => {
     if (!user || !stock) return;
