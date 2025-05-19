@@ -8,7 +8,7 @@ import CheckIcon from "@mui/icons-material/Check";
 import { IoMdRefresh } from "react-icons/io";
 import { Heart, ZoomIn, ArrowUp, ArrowDown } from "lucide-react";
 
-const API_BASE = "http://localhost:3001";
+const API_BASE = "https://stockview-7oeb.onrender.com";
 
 const StockDetails = () => {
   const { selectedStock } = useStock();
