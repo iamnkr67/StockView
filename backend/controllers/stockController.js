@@ -1,118 +1,57 @@
-const axios = require("axios");
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+const { NseIndia } = require("stock-nse-india");
+const nseIndia = new NseIndia();
 const StockUser = require("../models/alertPrice");
 
-const NSE_BASE_URL = "https://www.nseindia.com";
-
-// Setup NSE Axios client
-const nseAxios = axios.create({
-  baseURL: NSE_BASE_URL,
-  headers: {
-    "User-Agent":
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
-    Accept: "application/json, text/plain, */*",
-    Referer: "https://www.nseindia.com",
-    Connection: "keep-alive",
-  },
-  withCredentials: true,
-});
-
-// Utility to fetch equity data
-async function fetchEquityDetails(symbol) {
-  try {
-    await nseAxios.get("/"); // Initialize cookies
-    const response = await nseAxios.get(`/api/quote-equity?symbol=${symbol}`);
-    const priceInfo = response.data?.priceInfo;
-
-    if (!priceInfo || priceInfo.lastPrice === undefined) {
-      throw new Error("Invalid stock symbol or missing price info");
-    }
-
-    return {
-      symbol: response.data.info.symbol,
-      lastPrice: priceInfo.lastPrice,
-      change: priceInfo.change,
-      pChange: priceInfo.pChange,
-    };
-  } catch (error) {
-    console.error(
-      `Failed to fetch equity details for ${symbol}:`,
-      error.message,
-    );
-    throw new Error("Unable to fetch stock data");
-  }
-}
-
-// Utility to fetch historical data
-async function fetchEquityHistoricalData(symbol) {
-  try {
-    await nseAxios.get("/");
-    const res = await nseAxios.get(
-      `/api/equity-historical-data?symbol=${symbol}`,
-    );
-    return res.data;
-  } catch (error) {
-    console.error(
-      `Failed to fetch historical data for ${symbol}:`,
-      error.message,
-    );
-    throw new Error("Unable to fetch historical data");
-  }
-}
-
-// GET: Stock price by symbol
 const getStockPrice = async (req, res) => {
-  const { id: symbol } = req.params;
-
-  if (!symbol) {
+  const stockID = req.params.id;
+  if (!stockID) {
     return res.status(400).json({ message: "Stock ID is required" });
   }
-
   try {
-    const stockData = await fetchEquityDetails(symbol.toUpperCase());
-    return res.status(200).json(stockData);
-  } catch (err) {
-    return res.status(500).json({ message: err.message });
+    const details = await nseIndia.getEquityDetails(stockID);
+
+    if (
+      details &&
+      details.priceInfo &&
+      details.priceInfo.lastPrice !== undefined
+    ) {
+      return res.status(200).json(details);
+    } else {
+      return res.status(404).json({ message: "Stock details not found" });
+    }
+  } catch (error) {
+    console.error("Error fetching stock price: ", error);
+    res.status(500).json({ message: "Error fetching stock price" });
   }
 };
 
-// POST: Set stock alert limit
 const setStockLimit = async (req, res) => {
   const { name, email, stock } = req.body;
-
-  if (!name || !email || !stock || !stock.stockId) {
-    return res
-      .status(400)
-      .json({ message: "Name, email, and stock details are required." });
+  if (!name || !email || !stock) {
+    return res.status(400).json({ message: "All fields are required!" });
   }
-
   try {
     let user = await StockUser.findOne({ email });
-
     if (!user) {
       user = new StockUser({ name, email, stock: [] });
     }
-
-    const existing = user.stock.find((s) => s.stockId === stock.stockId);
-    if (existing) {
-      existing.targetPrice = stock.targetPrice;
-      existing.stopLoss = stock.stopLoss;
+    const existingStock = user.stock.find((s) => s.stockId === stock.stockId);
+    if (existingStock) {
+      existingStock.targetPrice = stock.targetPrice;
+      existingStock.stopLoss = stock.stopLoss;
     } else {
       user.stock.push(stock);
     }
-
     await user.save();
-    return res.status(200).json({
-      message: existing
-        ? "Price limits updated successfully"
-        : "Price limits set successfully",
-    });
+    if (existingStock)
+      res.status(200).json({ message: "Price Limits Update Successfully" });
+    else res.status(200).json({ message: "Price Limits Set Successfully" });
   } catch (error) {
-    console.error("Failed to save alert:", error);
-    return res.status(500).json({ message: "Internal server error" });
+    return res.status(500).json({ message: "Error fetching user data", error });
   }
 };
 
-// GET: Fetch alerts by email
 const getAlertsByEmail = async (req, res) => {
   const { email } = req.params;
 
@@ -122,30 +61,26 @@ const getAlertsByEmail = async (req, res) => {
 
   try {
     const alerts = await StockUser.find({ email });
-    return res.status(200).json(alerts);
+    res.status(200).json(alerts);
   } catch (error) {
-    console.error("Failed to fetch alerts:", error);
-    return res.status(500).json({ message: "Error fetching alerts" });
+    console.error("Error fetching alerts: ", error);
+    res.status(500).json({ message: "Failed to fetch alerts" });
   }
 };
 
-// GET: Historical chart data
 const getHistory = async (req, res) => {
-  const { symbol } = req.params;
-
-  if (!symbol) {
-    return res.status(400).json({ message: "Symbol is required" });
-  }
+  const symbol = req.params.symbol;
 
   try {
-    const raw = await fetchEquityHistoricalData(symbol.toUpperCase());
+    const rawResult = await nseIndia.getEquityHistoricalData(symbol);
 
-    const chartData = [];
+    const allData = [];
 
-    raw.forEach((segment) => {
-      if (Array.isArray(segment?.data)) {
+    // Loop over each historical segment and extract data
+    rawResult.forEach((segment) => {
+      if (segment.data && Array.isArray(segment.data)) {
         segment.data.forEach((d) => {
-          chartData.push({
+          allData.push({
             time: Math.floor(new Date(d.CH_TIMESTAMP).getTime() / 1000),
             open: d.CH_OPENING_PRICE,
             high: d.CH_TRADE_HIGH_PRICE,
@@ -155,19 +90,16 @@ const getHistory = async (req, res) => {
         });
       }
     });
-
-    chartData.sort((a, b) => a.time - b.time);
+    // Sort the data by time in ascending order
+    allData.sort((a, b) => a.time - b.time);
+    // Send the data as a JSON response
     res.setHeader("Access-Control-Allow-Origin", "*");
-    return res.json(chartData);
+
+    res.json(allData);
   } catch (error) {
-    console.error("Historical data error:", error.message);
-    return res.status(500).json({ message: "Failed to fetch historical data" });
+    console.error("Error fetching historical data:", error.message);
+    res.status(500).json({ error: "Failed to fetch historical data" });
   }
 };
 
-module.exports = {
-  getStockPrice,
-  setStockLimit,
-  getAlertsByEmail,
-  getHistory,
-};
+module.exports = { getStockPrice, setStockLimit, getHistory, getAlertsByEmail };
