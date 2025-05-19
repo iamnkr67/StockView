@@ -12,8 +12,16 @@ schedulePriceCheck();
 
 const app = express();
 app.use(express.json());
-app.use(cors());
 
+<<<<<<< HEAD
+=======
+
+app.use(
+  cors({
+    origin: ["http://localhost:3001", "https://stockview-7oeb.onrender.com"],
+  }),
+);
+>>>>>>> 28278c3947139491da154a9a8a4ff7078cd50de3
 
 const port = process.env.PORT || 5000;
 

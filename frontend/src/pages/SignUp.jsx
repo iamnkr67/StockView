@@ -31,7 +31,7 @@ const SignUp = ({ showModal, setShowModal }) => {
 
     try {
       const response = await axios.post(
-        "https://stockview-7oeb.onrender.com/api/user/register",
+        "http://localhost:3001/api/user/register",
         { name, email, password },
       );
 

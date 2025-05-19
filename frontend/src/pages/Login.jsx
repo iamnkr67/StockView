@@ -20,7 +20,7 @@ const Login = ({ showModal, setShowModal }) => {
 
     try {
       const response = await axios.post(
-        "https://stockview-7oeb.onrender.com/api/user/login",
+        "http://localhost:3001/api/user/login",
         { email, password },
       );
 

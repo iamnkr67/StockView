@@ -14,7 +14,7 @@ import StockGraph from "../components/StockGraph.jsx";
 import { Alert } from "@mui/material";
 import CheckIcon from "@mui/icons-material/Check";
 
-const API_BASE = "https://stockview-7oeb.onrender.com";
+const API_BASE = "http://localhost:3001";
 
 const StockDetails = () => {
   const { selectedStock } = useStock();
