@@ -4,7 +4,8 @@
   "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "npx nodemon ./server.js"
+    "start": "npx nodemon ./server.js",
+    "vercel-build": "echo 'No build needed'"
   },
   "author": "",
   "license": "ISC",
