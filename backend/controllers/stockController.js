@@ -11,7 +11,6 @@ const getStockPrice = async (req, res) => {
   try {
     const details = await nseIndia.getEquityDetails(stockID);
 
-
     if (
       details &&
       details.priceInfo &&
@@ -27,7 +26,7 @@ const getStockPrice = async (req, res) => {
   }
 };
 
-const setStockLimit = async(req,res) => {
+const setStockLimit = async (req, res) => {
   const { name, email, stock } = req.body;
   if (!name || !email || !stock) {
     return res.status(400).json({ message: "All fields are required!" });
@@ -45,52 +44,62 @@ const setStockLimit = async(req,res) => {
       user.stock.push(stock);
     }
     await user.save();
-    if(existingStock)
+    if (existingStock)
       res.status(200).json({ message: "Price Limits Update Successfully" });
-    else
-      res.status(200).json({ message: "Price Limits Set Successfully" });
+    else res.status(200).json({ message: "Price Limits Set Successfully" });
+  } catch (error) {
+    return res.status(500).json({ message: "Error fetching user data", error });
+  }
+};
+
+const getAlertsByEmail = async (req, res) => {
+  const { email } = req.params;
+
+  if (!email) {
+    return res.status(400).json({ message: "Email is required" });
   }
 
-  catch (error) {
-    return res.status(500).json({ message: "Error fetching user data",error });
+  try {
+    const alerts = await StockUser.find({ email });
+    res.status(200).json(alerts);
+  } catch (error) {
+    console.error("Error fetching alerts: ", error);
+    res.status(500).json({ message: "Failed to fetch alerts" });
   }
-}
+};
 
 const getHistory = async (req, res) => {
- 
-   const symbol = req.params.symbol;
+  const symbol = req.params.symbol;
 
-   try {
-     const rawResult = await nseIndia.getEquityHistoricalData(symbol);
+  try {
+    const rawResult = await nseIndia.getEquityHistoricalData(symbol);
 
-     const allData = [];
+    const allData = [];
 
-     // Loop over each historical segment and extract data
-     rawResult.forEach((segment) => {
-       if (segment.data && Array.isArray(segment.data)) {
-         segment.data.forEach((d) => {
-           allData.push({
-             time: Math.floor(new Date(d.CH_TIMESTAMP).getTime() / 1000),
-              open: d.CH_OPENING_PRICE,
-              high: d.CH_TRADE_HIGH_PRICE,
-              low: d.CH_TRADE_LOW_PRICE,
-              close: d.CH_CLOSING_PRICE,
-           });
-         });
-       }
-     });
-     // Sort the data by time in ascending order
-      allData.sort((a, b) => a.time - b.time);
-     // Send the data as a JSON response
-     res.setHeader("Access-Control-Allow-Origin", "*");
-     
+    // Loop over each historical segment and extract data
+    rawResult.forEach((segment) => {
+      if (segment.data && Array.isArray(segment.data)) {
+        segment.data.forEach((d) => {
+          allData.push({
+            time: Math.floor(new Date(d.CH_TIMESTAMP).getTime() / 1000),
+            open: d.CH_OPENING_PRICE,
+            high: d.CH_TRADE_HIGH_PRICE,
+            low: d.CH_TRADE_LOW_PRICE,
+            close: d.CH_CLOSING_PRICE,
+          });
+        });
+      }
+    });
+    // Sort the data by time in ascending order
+    allData.sort((a, b) => a.time - b.time);
+    // Send the data as a JSON response
+    res.setHeader("Access-Control-Allow-Origin", "*");
 
-     res.json(allData);
+    res.json(allData);
+  } catch (error) {
+    console.error("Error fetching historical data:", error.message);
+    res.status(500).json({ error: "Failed to fetch historical data" });
+  }
+};
 
-   } catch (error) {
-     console.error("Error fetching historical data:", error.message);
-     res.status(500).json({ error: "Failed to fetch historical data" });
-   } 
-}
-
-module.exports = { getStockPrice, setStockLimit, getHistory };
+module.exports = { getStockPrice, setStockLimit, getHistory, getAlertsByEmail };

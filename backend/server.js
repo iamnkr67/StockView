@@ -14,13 +14,6 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-const cors = require("cors");
-
-app.use(
-  cors({
-    origin: ["http://localhost:3001", "https://stockview-7oeb.onrender.com"],
-  }),
-);
 
 const port = process.env.PORT || 5000;
 
