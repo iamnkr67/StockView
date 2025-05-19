@@ -6,13 +6,7 @@ import StockGraph from "../components/StockGraph.jsx";
 import { Alert } from "@mui/material";
 import CheckIcon from "@mui/icons-material/Check";
 import { IoMdRefresh } from "react-icons/io";
-import {
-  Heart,
-  RefreshCw,
-  ZoomIn,
-  ArrowUp,
-  ArrowDown,
-} from "lucide-react";
+import { Heart, RefreshCw, ZoomIn, ArrowUp, ArrowDown } from "lucide-react";
 
 const API_BASE = "http://localhost:3001";
 
@@ -36,7 +30,7 @@ const StockDetails = () => {
 
   const showAlert = (message) => {
     setAlertMessage(message);
-    setTimeout(() => setAlertMessage(null), 3000);
+    setTimeout(() => setAlertMessage(null), 900);
   };
 
   const fetchWishlist = useCallback(async () => {
@@ -173,7 +167,10 @@ const StockDetails = () => {
             </div>
 
             <div className="flex items-center gap-3">
-              <button onClick={toggleWishlist} className="text-green-700 text-xl">
+              <button
+                onClick={toggleWishlist}
+                className="text-green-700 text-xl"
+              >
                 {isWishlisted ? (
                   <Heart className="text-green-700 fill-green-700" size={22} />
                 ) : (
@@ -191,7 +188,11 @@ const StockDetails = () => {
                       changeValue > 0 ? "text-green-600" : "text-red-600"
                     }`}
                   >
-                    {changeValue > 0 ? <ArrowUp size={16} /> : <ArrowDown size={16} />}
+                    {changeValue > 0 ? (
+                      <ArrowUp size={16} />
+                    ) : (
+                      <ArrowDown size={16} />
+                    )}
                     {changeValue > 0
                       ? `+${changeValue.toFixed(2)}`
                       : changeValue.toFixed(2)}
@@ -221,7 +222,9 @@ const StockDetails = () => {
                 }}
                 className="text-gray-600"
               >
-                <IoMdRefresh className={`${isRefreshing ? "animate-spin" : ""}`} />
+                <IoMdRefresh
+                  className={`${isRefreshing ? "animate-spin" : ""}`}
+                />
               </button>
             </div>
           </div>
@@ -257,7 +260,9 @@ const StockDetails = () => {
         </div>
 
         <div className="bg-white rounded-lg shadow-md p-6 w-full lg:w-1/4">
-          <h2 className="text-xl font-bold text-secondary mb-4">Create Alert</h2>
+          <h2 className="text-xl font-bold text-secondary mb-4">
+            Create Alert
+          </h2>
 
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Enter Target Price
