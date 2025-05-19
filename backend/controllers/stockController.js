@@ -1,72 +1,28 @@
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
-
-const axios = require("axios");
-const cheerio = require("cheerio");
-const { CookieJar } = require("tough-cookie");
-const { wrapper } = require("axios-cookiejar-support");
+const { NseIndia } = require("stock-nse-india");
+const nseIndia = new NseIndia();
 const StockUser = require("../models/alertPrice");
 
-const jar = new CookieJar();
-const client = wrapper(axios.create({ jar }));
-
-client.defaults.headers.common["User-Agent"] =
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36";
-client.defaults.headers.common["Accept"] =
-  "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8";
-client.defaults.headers.common["Accept-Language"] = "en-US,en;q=0.9";
-
 const getStockPrice = async (req, res) => {
-  const stockID = req.params.id.toUpperCase();
+  const stockID = req.params.id;
   if (!stockID) {
     return res.status(400).json({ message: "Stock ID is required" });
   }
-
   try {
-    await client.get("https://www.nseindia.com");
+    const details = await nseIndia.getEquityDetails(stockID);
 
-    const response = await client.get(
-      `https://www.nseindia.com/get-quotes/equity?symbol=${stockID}`,
-    );
-
-    const html = response.data;
-    const $ = cheerio.load(html);
-
-    const scriptTags = $("script");
-    let jsonData = null;
-
-    scriptTags.each((_, el) => {
-      const text = $(el).html();
-      if (text.includes("window.__PRELOADED_STATE__")) {
-        const match = text.match(/window\.__PRELOADED_STATE__\s*=\s*({.*});/);
-        if (match) {
-          jsonData = JSON.parse(match[1]);
-        }
-      }
-    });
-
-    if (!jsonData || !jsonData.quotes || !jsonData.quotes[stockID]) {
-      return res
-        .status(404)
-        .json({ error: `Stock data not found for ${stockID}` });
+    if (
+      details &&
+      details.priceInfo &&
+      details.priceInfo.lastPrice !== undefined
+    ) {
+      return res.status(200).json(details);
+    } else {
+      return res.status(404).json({ message: "Stock details not found" });
     }
-
-    const stock = jsonData.quotes[stockID];
-    const { priceInfo, metadata } = stock;
-
-    return res.status(200).json({
-      symbol: stockID,
-      lastPrice: priceInfo.lastPrice,
-      previousClose: priceInfo.previousClose,
-      change: priceInfo.change,
-      pChange: priceInfo.pChange,
-      companyName: metadata.companyName,
-      industry: metadata.industry,
-    });
-  } catch (err) {
-    console.error("NSE scraping error:", err.message);
-    res
-      .status(500)
-      .json({ error: "Failed to fetch stock data", details: err.message });
+  } catch (error) {
+    console.error("Error fetching stock price: ", error);
+    res.status(500).json({ message: "Error fetching stock price" });
   }
 };
 
@@ -92,14 +48,13 @@ const setStockLimit = async (req, res) => {
       res.status(200).json({ message: "Price Limits Update Successfully" });
     else res.status(200).json({ message: "Price Limits Set Successfully" });
   } catch (error) {
-    return res
-      .status(500)
-      .json({ message: "Error saving user data", error: error.message });
+    return res.status(500).json({ message: "Error fetching user data", error });
   }
 };
 
 const getAlertsByEmail = async (req, res) => {
   const { email } = req.params;
+
   if (!email) {
     return res.status(400).json({ message: "Email is required" });
   }
@@ -114,36 +69,32 @@ const getAlertsByEmail = async (req, res) => {
 };
 
 const getHistory = async (req, res) => {
-  const symbol = req.params.symbol.toUpperCase();
+  const symbol = req.params.symbol;
+
   try {
-    const today = new Date();
-    const pastDate = new Date();
-    pastDate.setMonth(today.getMonth() - 6); // 6 months history
+    const rawResult = await nseIndia.getEquityHistoricalData(symbol);
 
-    const formattedTo = today.toISOString().split("T")[0];
-    const formattedFrom = pastDate.toISOString().split("T")[0];
+    const allData = [];
 
-    const url = `https://www.nseindia.com/api/historical/cm/equity?symbol=${symbol}&series=[%22EQ%22]&from=${formattedFrom}&to=${formattedTo}&csv=false`;
-
-    await client.get("https://www.nseindia.com"); // preload cookies
-    const response = await client.get(url, {
-      headers: {
-        Referer: `https://www.nseindia.com/get-quotes/equity?symbol=${symbol}`,
-      },
+    // Loop over each historical segment and extract data
+    rawResult.forEach((segment) => {
+      if (segment.data && Array.isArray(segment.data)) {
+        segment.data.forEach((d) => {
+          allData.push({
+            time: Math.floor(new Date(d.CH_TIMESTAMP).getTime() / 1000),
+            open: d.CH_OPENING_PRICE,
+            high: d.CH_TRADE_HIGH_PRICE,
+            low: d.CH_TRADE_LOW_PRICE,
+            close: d.CH_CLOSING_PRICE,
+          });
+        });
+      }
     });
-
-    const data = response.data.data;
-    const allData = data.map((d) => ({
-      time: Math.floor(new Date(d.CH_TIMESTAMP).getTime() / 1000),
-      open: d.CH_OPENING_PRICE,
-      high: d.CH_TRADE_HIGH_PRICE,
-      low: d.CH_TRADE_LOW_PRICE,
-      close: d.CH_CLOSING_PRICE,
-    }));
-
+    // Sort the data by time in ascending order
     allData.sort((a, b) => a.time - b.time);
-
+    // Send the data as a JSON response
     res.setHeader("Access-Control-Allow-Origin", "*");
+
     res.json(allData);
   } catch (error) {
     console.error("Error fetching historical data:", error.message);
@@ -151,9 +102,4 @@ const getHistory = async (req, res) => {
   }
 };
 
-module.exports = {
-  getStockPrice,
-  setStockLimit,
-  getHistory,
-  getAlertsByEmail,
-};
+module.exports = { getStockPrice, setStockLimit, getHistory, getAlertsByEmail };
