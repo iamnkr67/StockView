@@ -1,84 +1,85 @@
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+
 const axios = require("axios");
-const tough = require("tough-cookie");
+const cheerio = require("cheerio");
+const { CookieJar } = require("tough-cookie");
 const { wrapper } = require("axios-cookiejar-support");
 const StockUser = require("../models/alertPrice");
 
-// Cookie jar and Axios wrapper setup
-const jar = new tough.CookieJar();
-const client = wrapper(
-  axios.create({
-    baseURL: "https://www.nseindia.com",
-    headers: {
-      "User-Agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-      Accept: "*/*",
-      "Accept-Encoding": "gzip, deflate, br",
-      "Accept-Language": "en-US,en;q=0.9",
-      Referer: "https://www.nseindia.com/",
-      Origin: "https://www.nseindia.com",
-      Connection: "keep-alive",
-    },
-    jar,
-    withCredentials: true,
-  }),
-);
+const jar = new CookieJar();
+const client = wrapper(axios.create({ jar }));
 
-// In-memory cache to reduce repeated calls
-const cache = new Map();
+client.defaults.headers.common["User-Agent"] =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36";
+client.defaults.headers.common["Accept"] =
+  "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8";
+client.defaults.headers.common["Accept-Language"] = "en-US,en;q=0.9";
 
-// Fetch initial cookies
-const initializeCookies = async () => {
-  try {
-    await client.get("/");
-  } catch (error) {
-    console.error("Failed to initialize NSE cookies:", error.message);
-  }
-};
-
-// Get stock price from NSE
 const getStockPrice = async (req, res) => {
-  const stockID = req.params.id;
-  if (!stockID)
+  const stockID = req.params.id.toUpperCase();
+  if (!stockID) {
     return res.status(400).json({ message: "Stock ID is required" });
+  }
 
   try {
-    const now = Date.now();
-    const cached = cache.get(stockID);
-    if (cached && now - cached.timestamp < 30000) {
-      return res.status(200).json(cached.data);
+    await client.get("https://www.nseindia.com");
+
+    const response = await client.get(
+      `https://www.nseindia.com/get-quotes/equity?symbol=${stockID}`,
+    );
+
+    const html = response.data;
+    const $ = cheerio.load(html);
+
+    const scriptTags = $("script");
+    let jsonData = null;
+
+    scriptTags.each((_, el) => {
+      const text = $(el).html();
+      if (text.includes("window.__PRELOADED_STATE__")) {
+        const match = text.match(/window\.__PRELOADED_STATE__\s*=\s*({.*});/);
+        if (match) {
+          jsonData = JSON.parse(match[1]);
+        }
+      }
+    });
+
+    if (!jsonData || !jsonData.quotes || !jsonData.quotes[stockID]) {
+      return res
+        .status(404)
+        .json({ error: `Stock data not found for ${stockID}` });
     }
 
-    await initializeCookies();
+    const stock = jsonData.quotes[stockID];
+    const { priceInfo, metadata } = stock;
 
-    const response = await client.get(`/api/quote-equity?symbol=${stockID}`);
-    const data = response.data;
-
-    if (data?.priceInfo?.lastPrice !== undefined) {
-      cache.set(stockID, { data, timestamp: now });
-      return res.status(200).json(data);
-    } else {
-      return res.status(404).json({ message: "Stock details not found" });
-    }
-  } catch (error) {
-    console.error("NSE Fetch Error:", error?.response?.data || error.message);
-    return res.status(500).json({ message: "Failed to fetch stock price" });
+    return res.status(200).json({
+      symbol: stockID,
+      lastPrice: priceInfo.lastPrice,
+      previousClose: priceInfo.previousClose,
+      change: priceInfo.change,
+      pChange: priceInfo.pChange,
+      companyName: metadata.companyName,
+      industry: metadata.industry,
+    });
+  } catch (err) {
+    console.error("NSE scraping error:", err.message);
+    res
+      .status(500)
+      .json({ error: "Failed to fetch stock data", details: err.message });
   }
 };
 
-// Set price limit alerts
 const setStockLimit = async (req, res) => {
   const { name, email, stock } = req.body;
   if (!name || !email || !stock) {
     return res.status(400).json({ message: "All fields are required!" });
   }
-
   try {
     let user = await StockUser.findOne({ email });
     if (!user) {
       user = new StockUser({ name, email, stock: [] });
     }
-
     const existingStock = user.stock.find((s) => s.stockId === stock.stockId);
     if (existingStock) {
       existingStock.targetPrice = stock.targetPrice;
@@ -86,68 +87,73 @@ const setStockLimit = async (req, res) => {
     } else {
       user.stock.push(stock);
     }
-
     await user.save();
-    res.status(200).json({
-      message: existingStock
-        ? "Price Limits Updated Successfully"
-        : "Price Limits Set Successfully",
-    });
+    if (existingStock)
+      res.status(200).json({ message: "Price Limits Update Successfully" });
+    else res.status(200).json({ message: "Price Limits Set Successfully" });
   } catch (error) {
-    res.status(500).json({ message: "Error saving price alert", error });
+    return res
+      .status(500)
+      .json({ message: "Error saving user data", error: error.message });
   }
 };
 
-// Get user alerts by email
 const getAlertsByEmail = async (req, res) => {
   const { email } = req.params;
-  if (!email) return res.status(400).json({ message: "Email is required" });
+  if (!email) {
+    return res.status(400).json({ message: "Email is required" });
+  }
 
   try {
     const alerts = await StockUser.find({ email });
     res.status(200).json(alerts);
   } catch (error) {
-    console.error("Error fetching alerts:", error.message);
+    console.error("Error fetching alerts: ", error);
     res.status(500).json({ message: "Failed to fetch alerts" });
   }
 };
 
-// Get historical data using stock-nse-india as fallback
-const { NseIndia } = require("stock-nse-india");
-const nseIndia = new NseIndia();
-
 const getHistory = async (req, res) => {
-  const symbol = req.params.symbol;
+  const symbol = req.params.symbol.toUpperCase();
   try {
-    const rawResult = await nseIndia.getEquityHistoricalData(symbol);
-    const allData = [];
+    const today = new Date();
+    const pastDate = new Date();
+    pastDate.setMonth(today.getMonth() - 6); // 6 months history
 
-    rawResult.forEach((segment) => {
-      if (segment.data && Array.isArray(segment.data)) {
-        segment.data.forEach((d) => {
-          allData.push({
-            time: Math.floor(new Date(d.CH_TIMESTAMP).getTime() / 1000),
-            open: d.CH_OPENING_PRICE,
-            high: d.CH_TRADE_HIGH_PRICE,
-            low: d.CH_TRADE_LOW_PRICE,
-            close: d.CH_CLOSING_PRICE,
-          });
-        });
-      }
+    const formattedTo = today.toISOString().split("T")[0];
+    const formattedFrom = pastDate.toISOString().split("T")[0];
+
+    const url = `https://www.nseindia.com/api/historical/cm/equity?symbol=${symbol}&series=[%22EQ%22]&from=${formattedFrom}&to=${formattedTo}&csv=false`;
+
+    await client.get("https://www.nseindia.com"); // preload cookies
+    const response = await client.get(url, {
+      headers: {
+        Referer: `https://www.nseindia.com/get-quotes/equity?symbol=${symbol}`,
+      },
     });
 
+    const data = response.data.data;
+    const allData = data.map((d) => ({
+      time: Math.floor(new Date(d.CH_TIMESTAMP).getTime() / 1000),
+      open: d.CH_OPENING_PRICE,
+      high: d.CH_TRADE_HIGH_PRICE,
+      low: d.CH_TRADE_LOW_PRICE,
+      close: d.CH_CLOSING_PRICE,
+    }));
+
     allData.sort((a, b) => a.time - b.time);
+
     res.setHeader("Access-Control-Allow-Origin", "*");
     res.json(allData);
   } catch (error) {
     console.error("Error fetching historical data:", error.message);
-    res.status(500).json({ message: "Failed to fetch historical data" });
+    res.status(500).json({ error: "Failed to fetch historical data" });
   }
 };
 
 module.exports = {
   getStockPrice,
   setStockLimit,
-  getAlertsByEmail,
   getHistory,
+  getAlertsByEmail,
 };
