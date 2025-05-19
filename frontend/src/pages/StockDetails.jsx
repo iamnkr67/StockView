@@ -6,7 +6,7 @@ import StockGraph from "../components/StockGraph.jsx";
 import { Alert } from "@mui/material";
 import CheckIcon from "@mui/icons-material/Check";
 import { IoMdRefresh } from "react-icons/io";
-import { Heart, RefreshCw, ZoomIn, ArrowUp, ArrowDown } from "lucide-react";
+import { Heart, ZoomIn, ArrowUp, ArrowDown } from "lucide-react";
 
 const API_BASE = "http://localhost:3001";
 
